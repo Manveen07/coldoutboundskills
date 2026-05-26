@@ -1,0 +1,19 @@
+{
+  "name": "coldoutboundskills-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "extract": "tsx scripts/extract-signals.ts",
+    "render": "tsx scripts/render-with-signals.ts",
+    "validate": "tsx scripts/validate-final.ts"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  }
+}

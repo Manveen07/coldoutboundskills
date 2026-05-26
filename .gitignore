@@ -19,3 +19,6 @@ dist/
 health-*.csv
 scorecard-*.md
 campaign-plan-*.md
+
+# Signal layer extracted data
+data/signals/
