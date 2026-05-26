@@ -1175,6 +1175,161 @@ git commit -m "feat(signals): signal selector with priority order + freshness fi
 
 ---
 
+## Task 8.5: Lead Eligibility Validator (NEW — Amendment 1)
+
+**Files:**
+- Create: `scripts/validate-lead-eligibility.ts`
+- Create: `tests/validate-lead-eligibility.test.ts`
+
+**Purpose:** Catch leads who should never enter enrichment. Twain wrote a full 5-email sequence to Sarah Zurell at Chinese Laundry despite its own Warnings field saying "The lead is no longer the CMO of the target company." We mechanically refuse.
+
+**Checks (each produces a `warnings` column code + contributes to `eligible` boolean):**
+- W1: LinkedIn current_company matches lead.company_domain. Uses PND when available. Falls back to "unknown" (flag but don't block) when PND not yet integrated.
+- W2: LinkedIn shows active employment (no "Open to work" / "Currently unemployed" status). Falls back to "unknown" pre-PND.
+- W3: LinkedIn current title fuzzy-matches campaign data title ("VP Marketing" ≈ "Vice President of Marketing"). Falls back to "unknown" pre-PND.
+- W4: company_domain resolves to live website (DNS check + HTTP 200 on root). Always runs.
+
+Output columns:
+- `eligibility_warnings`: semicolon-separated codes (e.g., "W1;W4")
+- `eligible`: boolean (true unless any check returned hard fail)
+
+Leads with `eligible=false` NEVER enter the enrichment queue.
+
+- [ ] **Step 1: Write failing tests for each check**
+
+`tests/validate-lead-eligibility.test.ts`:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { checkW4_dnsResolves, validateEligibility } from '../scripts/validate-lead-eligibility';
+
+describe('Check W4 — DNS resolution', () => {
+  it('returns pass for live domain', async () => {
+    const result = await checkW4_dnsResolves('google.com');
+    expect(result.pass).toBe(true);
+  });
+
+  it('returns fail for non-existent domain', async () => {
+    const result = await checkW4_dnsResolves('thisdomainshouldnotexist-xyz-12345.com');
+    expect(result.pass).toBe(false);
+  });
+});
+
+describe('validateEligibility', () => {
+  it('returns eligible=true with no warnings when all checks pass', async () => {
+    const result = await validateEligibility({
+      person_id: 'pid_1',
+      company_domain: 'google.com',
+      current_job_title: 'VP Marketing',
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.eligibility_warnings).toBe('');
+  });
+
+  it('returns eligible=false when W4 fails (DNS)', async () => {
+    const result = await validateEligibility({
+      person_id: 'pid_2',
+      company_domain: 'thisdomainshouldnotexist-xyz-12345.com',
+      current_job_title: 'VP Marketing',
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.eligibility_warnings).toContain('W4');
+  });
+});
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `npx vitest run tests/validate-lead-eligibility.test.ts`
+Expected: FAIL — module not found
+
+- [ ] **Step 3: Implement minimal validator**
+
+`scripts/validate-lead-eligibility.ts`:
+
+```typescript
+import { promises as dns } from 'dns';
+
+export interface EligibilityInput {
+  person_id: string;
+  company_domain: string;
+  current_job_title?: string;
+  linkedin_url?: string;
+}
+
+export interface CheckResult {
+  pass: boolean;
+  reason?: string;
+}
+
+export interface EligibilityResult {
+  eligible: boolean;
+  eligibility_warnings: string;
+  details: Record<string, CheckResult>;
+}
+
+export async function checkW4_dnsResolves(domain: string): Promise<CheckResult> {
+  try {
+    const records = await dns.resolve(domain).catch(() => null);
+    if (!records || records.length === 0) {
+      return { pass: false, reason: 'DNS resolution failed' };
+    }
+    return { pass: true };
+  } catch (err) {
+    return { pass: false, reason: String(err) };
+  }
+}
+
+// W1/W2/W3 stubs until PND integration (Task 19)
+export function checkW1_companyMatch(input: EligibilityInput): CheckResult {
+  // Pre-PND: return "unknown" — neither pass nor fail. Falls through to non-blocking.
+  return { pass: true, reason: 'unknown (PND not integrated yet)' };
+}
+
+export function checkW2_activeEmployment(input: EligibilityInput): CheckResult {
+  return { pass: true, reason: 'unknown (PND not integrated yet)' };
+}
+
+export function checkW3_titleMatch(input: EligibilityInput): CheckResult {
+  return { pass: true, reason: 'unknown (PND not integrated yet)' };
+}
+
+export async function validateEligibility(input: EligibilityInput): Promise<EligibilityResult> {
+  const w1 = checkW1_companyMatch(input);
+  const w2 = checkW2_activeEmployment(input);
+  const w3 = checkW3_titleMatch(input);
+  const w4 = await checkW4_dnsResolves(input.company_domain);
+
+  const failures: string[] = [];
+  if (!w1.pass) failures.push('W1');
+  if (!w2.pass) failures.push('W2');
+  if (!w3.pass) failures.push('W3');
+  if (!w4.pass) failures.push('W4');
+
+  return {
+    eligible: failures.length === 0,
+    eligibility_warnings: failures.join(';'),
+    details: { w1, w2, w3, w4 },
+  };
+}
+```
+
+- [ ] **Step 4: Run tests**
+
+Run: `npx vitest run tests/validate-lead-eligibility.test.ts`
+Expected: PASS — 4 tests passing
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/validate-lead-eligibility.ts tests/validate-lead-eligibility.test.ts
+git commit -m "feat(signals): lead eligibility validator (W1-W4 + extensibility for PND)"
+```
+
+**Integration note:** Task 9 (extractor orchestration) must check `eligible=true` before firing any queries. Update Task 9's leads-with-signals.csv input to filter on eligibility.
+
+---
+
 ## Task 9: Signal extractor — main orchestration script
 
 **Files:**
@@ -1647,6 +1802,238 @@ Expected: PASS — 3 tests
 git add scripts/_bridge_writer.ts tests/_bridge_writer.test.ts
 git commit -m "feat(signals): bridge sentence writer with banned-word pre-validation + retry"
 ```
+
+---
+
+## Task 11.5: Stat Rotation Tracker (NEW — Amendment 6)
+
+**Files:**
+- Create: `scripts/_stat_rotator.ts`
+- Create: `tests/_stat_rotator.test.ts`
+
+**Purpose:** Prevent stat repetition within a lead's 4-email sequence. Twain repeated "3-8x ROAS" in 4 of 5 emails. We rotate stats so each appears max once per sequence.
+
+**Stat pool (locked here, expand later):**
+- A: "103% higher LTV on DM-acquired vs paid-acquired customers"
+- B: "3-8x ROAS on first direct mail tests"
+- C: "20%+ direct mail productivity lift for DWR"
+- D: "Built on co-op transactional data from 4,000+ brands"
+- E: "Running direct mail for 300+ premium retail and DTC brands"
+
+- [ ] **Step 1: Write failing test**
+
+`tests/_stat_rotator.test.ts`:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { StatRotator } from '../scripts/_stat_rotator';
+
+describe('StatRotator', () => {
+  it('returns different stats across 4 emails for same lead', () => {
+    const r = new StatRotator();
+    const e1 = r.nextFor('pid_1');
+    const e2 = r.nextFor('pid_1');
+    const e3 = r.nextFor('pid_1');
+    const e4 = r.nextFor('pid_1');
+    expect(new Set([e1, e2, e3, e4]).size).toBe(4);
+  });
+
+  it('different leads can use same stat in slot 1', () => {
+    const r = new StatRotator();
+    const a = r.nextFor('pid_a');
+    const b = r.nextFor('pid_b');
+    // Either same or different is fine — both start at slot 0
+    expect(typeof a).toBe('string');
+    expect(typeof b).toBe('string');
+  });
+
+  it('throws when pool exhausted for a lead', () => {
+    const r = new StatRotator(['only_one']);
+    r.nextFor('pid_x');
+    expect(() => r.nextFor('pid_x')).toThrow(/exhausted/i);
+  });
+});
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `npx vitest run tests/_stat_rotator.test.ts`
+Expected: FAIL — module not found
+
+- [ ] **Step 3: Implement**
+
+`scripts/_stat_rotator.ts`:
+
+```typescript
+export const DEFAULT_STAT_POOL = [
+  '103% higher LTV on DM-acquired vs paid-acquired customers',
+  '3-8x ROAS on first direct mail tests',
+  '20%+ direct mail productivity lift for DWR',
+  'Built on co-op transactional data from 4,000+ brands',
+  'Running direct mail for 300+ premium retail and DTC brands',
+];
+
+export class StatRotator {
+  private used = new Map<string, Set<string>>();
+  constructor(private pool: string[] = DEFAULT_STAT_POOL) {}
+
+  nextFor(personId: string): string {
+    const usedByLead = this.used.get(personId) ?? new Set<string>();
+    const available = this.pool.filter(s => !usedByLead.has(s));
+    if (available.length === 0) {
+      throw new Error(`Stat pool exhausted for lead ${personId}`);
+    }
+    const choice = available[0];
+    usedByLead.add(choice);
+    this.used.set(personId, usedByLead);
+    return choice;
+  }
+
+  reset(personId?: string): void {
+    if (personId) this.used.delete(personId);
+    else this.used.clear();
+  }
+}
+```
+
+- [ ] **Step 4: Run tests**
+
+Run: `npx vitest run tests/_stat_rotator.test.ts`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/_stat_rotator.ts tests/_stat_rotator.test.ts
+git commit -m "feat(signals): stat rotation tracker — max once per lead's sequence"
+```
+
+**Integration note:** Task 12 (renderer) will instantiate `StatRotator` per render run + call `nextFor(person_id)` for each email body that needs a stat. Email 2 in particular MUST use a stat different from E1 (per Amendment 7).
+
+---
+
+## Task 11.6: Category Resolver (NEW — Amendment 8)
+
+**Files:**
+- Create: `scripts/_category_resolver.ts`
+- Create: `tests/_category_resolver.test.ts`
+
+**Purpose:** Don't trust upstream industry tags. Twain had Chinese Laundry tagged "mechanical or industrial engineering" (it's footwear) and Bloom Nutrition tagged "retail" then categorized as "food and kitchen" (it's supplements/wellness). Wrong tags drive wrong anchor selection.
+
+Resolve inferred_category from `company_name + company_description` via cheap AI call. Cross-check against `vertical_anchor_map`.
+
+- [ ] **Step 1: Write failing test**
+
+`tests/_category_resolver.test.ts`:
+
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { resolveCategory } from '../scripts/_category_resolver';
+
+describe('resolveCategory', () => {
+  it('overrides upstream tag when AI infers different category', async () => {
+    const aiInvoke = vi.fn().mockResolvedValue('footwear');
+    const result = await resolveCategory({
+      company_name: 'Chinese Laundry',
+      company_description: 'Womens fashion footwear brand',
+      upstream_industry: 'mechanical or industrial engineering',
+      anchor_map: { home_furniture: 'Serena & Lily', apparel: 'Bombas', footwear: 'Birkenstock' },
+    }, aiInvoke);
+    expect(result.inferred_category).toBe('footwear');
+    expect(result.upstream_was_wrong).toBe(true);
+    expect(result.anchor_match).toBe('Birkenstock');
+  });
+
+  it('flags when no anchor matches the inferred category', async () => {
+    const aiInvoke = vi.fn().mockResolvedValue('supplements');
+    const result = await resolveCategory({
+      company_name: 'Bloom Nutrition',
+      company_description: 'Premium supplements and wellness',
+      upstream_industry: 'retail',
+      anchor_map: { home_furniture: 'Serena & Lily', apparel: 'Bombas' },
+    }, aiInvoke);
+    expect(result.anchor_match).toBeNull();
+    expect(result.warnings).toContain('no_anchor_match');
+  });
+});
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `npx vitest run tests/_category_resolver.test.ts`
+Expected: FAIL — module not found
+
+- [ ] **Step 3: Implement**
+
+`scripts/_category_resolver.ts`:
+
+```typescript
+import type { AiInvoker } from './_bridge_writer';
+
+export interface CategoryInput {
+  company_name: string;
+  company_description?: string;
+  upstream_industry?: string;
+  anchor_map: Record<string, string>;
+}
+
+export interface CategoryResult {
+  inferred_category: string;
+  upstream_was_wrong: boolean;
+  anchor_match: string | null;
+  warnings: string[];
+}
+
+const CATEGORY_PROMPT = `You categorize a company into ONE of these categories based on its name + description.
+
+Valid categories: {categories}
+
+Company name: {company_name}
+Description: {description}
+Upstream provider tagged this as: {upstream}
+
+Respond with EXACTLY one category name from the list above. Nothing else.`;
+
+export async function resolveCategory(input: CategoryInput, aiInvoke: AiInvoker): Promise<CategoryResult> {
+  const categories = Object.keys(input.anchor_map);
+  const prompt = CATEGORY_PROMPT
+    .replace('{categories}', categories.join(', '))
+    .replace('{company_name}', input.company_name)
+    .replace('{description}', input.company_description || '(no description)')
+    .replace('{upstream}', input.upstream_industry || '(no upstream tag)');
+
+  const raw = (await aiInvoke(prompt)).trim().toLowerCase();
+  const inferred = categories.find(c => c.toLowerCase() === raw) || raw;
+
+  const upstream_was_wrong = Boolean(input.upstream_industry && !input.upstream_industry.toLowerCase().includes(inferred));
+  const anchor_match = input.anchor_map[inferred] || null;
+
+  const warnings: string[] = [];
+  if (upstream_was_wrong) warnings.push('upstream_industry_mismatch');
+  if (!anchor_match) warnings.push('no_anchor_match');
+
+  return {
+    inferred_category: inferred,
+    upstream_was_wrong,
+    anchor_match,
+    warnings,
+  };
+}
+```
+
+- [ ] **Step 4: Run tests**
+
+Run: `npx vitest run tests/_category_resolver.test.ts`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/_category_resolver.ts tests/_category_resolver.test.ts
+git commit -m "feat(signals): category resolver — don't trust upstream industry tags"
+```
+
+**Integration note:** Task 12 (renderer) calls resolveCategory() as pre-pass. If `anchor_match` is null → route to Variant C (no anchor). Log mismatches for audit.
 
 ---
 
@@ -2679,6 +3066,91 @@ Yes — Apparel pilot smoke tested, Variant B routing intact, validator catches 
 git add docs/superpowers/reports/
 git commit -m "docs(signals): sub-project B completion report"
 ```
+
+---
+
+## Amendments to existing tasks (Twain-derived — apply when reaching each task)
+
+### Task 4 amendment (banned-word list expansion)
+
+Update BANNED_STARTS to include: 'Saw that', 'I see', 'I don't see', 'I'm guessing', 'I imagine', 'I am guessing', 'I am imagining', 'I could imagine'.
+
+Update BANNED_WORDS_COMPOUND to include: 'caught my eye', 'tends to', 'tend to', 'usually see', 'usually drives', 'often see', 'brands at this stage', 'brands at that stage', 'brands in this category', 'brands in that category'.
+
+Add new exported function: `findFirstPersonObservation(text: string): string[]` matching `/\b(I see|I noticed|I caught|I'm guessing|I imagine|I am guessing|I am imagining|I could imagine)\b/i` (Check 11b).
+
+Add new exported function: `findVagueFact(fact: string): boolean` matching `/^(spring|summer|fall|winter|holiday|q[1-4])\s+(sale|launch|promotion|drop|collection)$/i` AND no proper noun in same fact (Check 11c).
+
+Add ~6 more tests covering all new bans.
+
+### Task 8 amendment (signal selector + rotation)
+
+In addition to existing `selectSignal(companySidecar, personSidecar)`, add:
+
+`selectSignalWithRotation(companySidecar, personSidecar, usedTypesForCompany: Set<string>): SelectedSignal`
+
+Same priority order, but skip signal types already in `usedTypesForCompany`. If all in-window signals already used for this company, fall back to `selectSignal()` (single-lead default).
+
+Add `acquisition` signal type to priority order (between promotion and funding). New tests for rotation: 3 leads at same domain receive 3 different signal types when company has ≥3 fresh signals.
+
+### Task 9 amendment (extractor — persist all signals)
+
+Change extractor to continue all queries (don't stop on first hit per signal type) and persist `available_signals[]` array on sidecar — full ranked list, in priority order, with `in_window` boolean.
+
+`leads-with-signals.csv` adds 2 columns: `available_signal_count` (int) and `available_signal_types` (semicolon-separated list).
+
+Extractor also reads eligibility from Task 8.5 — only processes rows with `eligible=true`.
+
+### Task 11 amendment (bridge writer — anti-Twain prompt)
+
+Update BRIDGE_PROMPT_TEMPLATE to append:
+
+"NEVER use these patterns (critical):
+- 'Saw [company] is...' → use '[company]'s [event] [date]...' instead
+- 'I see you...' → use 'Your [event]...' instead
+- 'I don't see X on your end' → drop the observation, state the category pattern only
+- 'Brands at this stage usually...' → use 'Brands at the [specific funding stage / revenue band / channel mix] you're at...'
+- 'X tends to...' / 'X usually drives...' → use 'X has driven...' with specific reference
+
+Hedge budget: ONE soft word ('likely', 'probably', 'often', 'usually') maximum per sentence. Stack of hedges = rejection.
+
+Anchor references: NEVER write 'a brand targeting the same consumer' or 'a peer brand'. Use the specific BW client name from the input context. If no specific anchor available, omit the case-study sentence entirely."
+
+### Task 12 amendment (renderer — Email 2 threaded + signal-tied subjects)
+
+Replace existing Email 2 template (the cold re-open template) with Amendment 7 threaded follow-up template. Word cap 65 enforced by new Check 15.
+
+Add `SIGNAL_TIED_SUBJECTS` map (Amendment 9). Add `subject_strategy` to render config: 'anchor' | 'category' | 'signal' | 'mixed' (default).
+
+Renderer instantiates `StatRotator` (Task 11.5) per render run. Each email body that needs a stat calls `rotator.nextFor(person_id)`.
+
+Renderer instantiates `CategoryResolver` (Task 11.6) for pre-pass. If anchor_match is null → assigned_variant = 'C' (override input).
+
+Renderer calls `selectSignalWithRotation` (Task 8 amendment) with per-domain used-types tracker.
+
+### Task 13 amendment (validator — Checks 11b + 11c)
+
+Add Check 11b: `findFirstPersonObservation(signal_bridge + signal_fact + email1_body + email2_body)`. Fail if any matches.
+
+Add Check 11c: `findVagueFact(signal_fact)`. Fail if true.
+
+Add tests covering: Twain's "I see you just dropped a Spring Security Sale" must be rejected by either Check 11b or 11c.
+
+### Task 14 amendment (validator — Check 15: E2 word cap)
+
+Add Check 15: `email2_body.split(/\s+/).filter(Boolean).length` MUST be ≤ 65. Fail if greater. Add tests.
+
+### Task 18 amendment (smoke gates)
+
+In addition to v4 vs v5 comparison, also run v5 against the 5 Twain fixture leads (`data/signals/signal_campaign_20260526_1456.csv`). Score per Amendment 4-9 acceptance gates:
+
+- Banned-word leaks: ZERO across all 5 leads
+- Stat repetition: each stat appears ≤1 time per lead's sequence
+- Hedge density: ≤1 hedge per sentence, ≤4 per email
+- Anchor specificity: every Variant B email names a specific BW client
+- Eligibility respected: Sarah Zurell (lead 4 in fixture, no longer at Chinese Laundry per Twain's own warning) must produce ZERO emails
+
+Any gate fail → STOP, do not proceed to full re-render, iterate prompt + banned lists + re-smoke.
 
 ---
 
