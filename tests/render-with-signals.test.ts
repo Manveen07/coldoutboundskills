@@ -245,4 +245,31 @@ describe('renderLead', () => {
     expect(wordCount).toBeLessThanOrEqual(65);
     expect(wordCount).toBeGreaterThanOrEqual(20);
   });
+
+  it('Variant B Email 1 does not contain duplicate "sits in the same lane" sentences (Bug 5 regression)', async () => {
+    writeFileSync(resolve(TEST_DIR, 'faherty.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'faherty.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: 'Faherty raised $18M Series B in March 2026.', found: true, freshness_days: 30 },
+    }));
+
+    const lead = {
+      person_id: 'pid_dup', first_name: 'Alex', full_name: 'Alex Smith',
+      current_job_title: 'VP Marketing', company_name: 'Faherty',
+      company_domain: 'faherty.com', qual_confidence: 0.85,
+      primary_vertical: 'apparel', assigned_variant: 'B' as const,
+      vertical_anchor: 'Bombas',
+      ai_similarity_dimension: 'DTC channel, premium apparel, store plus DTC mix',
+      ai_brand_category: 'lifestyle apparel',
+      ai_role_hook: 'VP Marketing owns acquisition mix',
+    };
+
+    const aiInvoke = vi.fn().mockResolvedValue('Brands at that funding stage benchmark fast.');
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    const matches = result.email1_body.match(/sits in the same lane/g) || [];
+    expect(matches.length).toBe(1);
+  });
 });

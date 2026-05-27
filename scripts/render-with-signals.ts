@@ -74,12 +74,12 @@ type SubjectStrategy = 'anchor' | 'category' | 'signal' | 'mixed';
  * `{{company_name}}` is the only variable interpolated at render time.
  */
 const ANCHOR_PROOF: Record<string, string> = {
-  'Serena & Lily': "We've been running direct mail for Serena & Lily for 11 years. {{company_name}} reminds me of where they were around 2017",
-  'Bombas': "We run direct mail for Bombas. Scaled from a single test into their core profitable acquisition channel. {{company_name}} sits in the same lane",
-  'AG': "We run direct mail for AG, built on transactional-data targeting for higher-value denim buyers. {{company_name}} is in the same bracket",
-  'Sundance': "We run direct mail for Sundance. Lifted new customer acquisition 36 points in six months. {{company_name}} reminds me of them",
-  'Title Nine': "We run paid digital for Title Nine. Restructured funnel-based paid media for clean ROAS lift on prospecting. {{company_name}} sits in the same lane",
-  'Birkenstock': "Birkenstock runs our Swift programmatic direct mail. Co-op transactional data lifted their ecommerce conversion. {{company_name}} could test the same play",
+  'Serena & Lily': "We've been running direct mail for Serena & Lily for 11 years",
+  'Bombas': "We run direct mail for Bombas. Scaled from a single test into their core profitable acquisition channel",
+  'AG': "We run direct mail for AG, built on transactional-data targeting for higher-value denim buyers",
+  'Sundance': "We run direct mail for Sundance. Lifted new customer acquisition 36 points in six months",
+  'Title Nine': "We run paid digital for Title Nine. Restructured funnel-based paid media for clean ROAS lift on prospecting",
+  'Birkenstock': "Birkenstock runs our Swift programmatic direct mail. Co-op transactional data lifted their ecommerce conversion",
 };
 
 /**
