@@ -5,6 +5,8 @@ import {
   check11c_vagueFact,
   check12_capitalization,
   check13_freshness,
+  check14_universalTruth,
+  check15_email2WordCap,
 } from '../scripts/validate-final';
 
 describe('Check 11 - banned words + sentence-starts', () => {
@@ -92,5 +94,51 @@ describe('Check 13 - freshness', () => {
 
   it('passes company_snippet regardless (no time decay)', () => {
     expect(check13_freshness({ signal_used: 'company_snippet', signal_freshness_days: 0 }).pass).toBe(true);
+  });
+});
+
+describe('Check 14 - universal-truth heuristic', () => {
+  it('passes when bridge follows a specific fact', () => {
+    const row = {
+      signal_fact: 'Your Series B closed in March.',
+      signal_bridge: 'Brands at that stage typically start asking the channel-mix question.',
+    };
+    expect(check14_universalTruth(row).pass).toBe(true);
+  });
+
+  it('rejects when bridge is pure universal truth with no preceding fact', () => {
+    const row = {
+      signal_fact: '',
+      signal_bridge: 'For premium DTC, channel diversification matters.',
+    };
+    const result = check14_universalTruth(row);
+    expect(result.pass).toBe(false);
+    expect(result.reason).toMatch(/universal truth/i);
+  });
+
+  it('passes when no signal at all (fallback)', () => {
+    expect(check14_universalTruth({ signal_fact: '', signal_bridge: '' }).pass).toBe(true);
+  });
+});
+
+describe('Check 15 - email2 word cap (Amendment 7)', () => {
+  it('passes Email 2 of 35-65 words', () => {
+    const body = 'Alex, bumping this up. Brands at that funding stage tend to move on benchmark decks fast. First quarter in role is when this kind of benchmark data gets attention. Want me to send the category benchmark deck?';
+    const result = check15_email2WordCap({ email2_body: body });
+    const wc = body.split(/\s+/).filter(Boolean).length;
+    expect(wc).toBeLessThanOrEqual(65);
+    expect(result.pass).toBe(true);
+  });
+
+  it('rejects Email 2 over 65 words', () => {
+    // Build a body deliberately over 65 words
+    const body = Array.from({ length: 70 }, (_, i) => `word${i}`).join(' ') + '.';
+    const result = check15_email2WordCap({ email2_body: body });
+    expect(result.pass).toBe(false);
+    expect(result.reason).toMatch(/65/);
+  });
+
+  it('passes when email2_body is empty', () => {
+    expect(check15_email2WordCap({}).pass).toBe(true);
   });
 });

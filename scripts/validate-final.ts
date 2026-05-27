@@ -134,6 +134,37 @@ export function check13_freshness(row: {
   return { pass: true };
 }
 
+const UNIVERSAL_PATTERN_PHRASES = [
+  /\bfor premium dtc\b/i,
+  /\bin this space\b/i,
+  /\bbrands at that stage\b/i,
+  /\bbrands like yours\b/i,
+];
+
+export function check14_universalTruth(row: { signal_bridge?: string; signal_fact?: string }): CheckResult {
+  const bridge = row.signal_bridge || '';
+  const fact = row.signal_fact || '';
+
+  if (!bridge && !fact) return { pass: true };
+
+  const hasPattern = UNIVERSAL_PATTERN_PHRASES.some(p => p.test(bridge));
+  if (hasPattern && !fact.trim()) {
+    return { pass: false, reason: 'universal truth pattern with no preceding fact' };
+  }
+
+  return { pass: true };
+}
+
+export function check15_email2WordCap(row: { email2_body?: string }): CheckResult {
+  const body = row.email2_body || '';
+  if (!body) return { pass: true };
+  const wordCount = body.split(/\s+/).filter(Boolean).length;
+  if (wordCount > 65) {
+    return { pass: false, reason: `email2_body has ${wordCount} words; cap is 65 (Amendment 7)` };
+  }
+  return { pass: true };
+}
+
 // ---------------------------------------------------------------------------
 // CLI entry — only runs when invoked directly (not when imported by tests)
 // ---------------------------------------------------------------------------
