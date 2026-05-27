@@ -15,6 +15,7 @@ import { resolve } from 'path';
 import { readSidecar } from './_lib_signals';
 import { selectSignal } from './_signal_selector';
 import { buildBridgePrompt } from './_bridge_writer';
+import { parseCsv } from './_csv_io';
 
 export interface BridgeTask {
   person_id: string;
@@ -104,15 +105,8 @@ async function runCli() {
     process.exit(1);
   }
 
-  const text = readFileSync(inputCsv, 'utf8').replace(/\r\n/g, '\n');
-  const lines = text.split('\n').filter(Boolean);
-  const headers = lines[0].split(',');
-  const rows = lines.slice(1).map(line => {
-    const vals = line.split(',');
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => (obj[h] = vals[i] ?? ''));
-    return obj;
-  });
+  const text = readFileSync(inputCsv, 'utf8');
+  const { rows } = parseCsv(text);
 
   const tasks = generateBridgeTasks(rows, 'data/signals', responsesDir);
 

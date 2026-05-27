@@ -316,15 +316,9 @@ Workflow:
   }
 
   const { readFileSync, writeFileSync } = await import('fs');
-  const text = readFileSync(inputCsv, 'utf8').replace(/\r\n/g, '\n');
-  const lines = text.split('\n').filter(Boolean);
-  const headers = lines[0].split(',');
-  const rows = lines.slice(1).map(line => {
-    const vals = line.split(',');
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => obj[h] = vals[i] ?? '');
-    return obj;
-  });
+  const { parseCsv, writeCsv } = await import('./_csv_io');
+  const text = readFileSync(inputCsv, 'utf8');
+  const { headers, rows } = parseCsv(text);
 
   const { makeFileBasedInvoker } = await import('./_file_based_invoker');
   const aiInvoke = makeFileBasedInvoker(responsesDir);
@@ -364,15 +358,7 @@ Workflow:
     'email1_subject', 'email1_body', 'email2_subject', 'email2_body',
     'email3_subject', 'email3_body', 'email4_subject', 'email4_body',
   ];
-  const outLines = [outHeaders.join(',')];
-  for (const r of rendered) {
-    outLines.push(outHeaders.map(h => {
-      const v = r[h] ?? '';
-      const s = String(v);
-      return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
-    }).join(','));
-  }
-  writeFileSync(outputCsv, outLines.join('\n'));
+  writeFileSync(outputCsv, writeCsv(rendered, outHeaders));
   console.error(`Wrote ${rendered.length} rendered leads to ${outputCsv}`);
 }
 

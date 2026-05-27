@@ -26,6 +26,7 @@ import {
   findFirstPersonObservation,
   findVagueFact,
 } from "./_lib_banned";
+import { parseCsv as parseCsvShared } from "./_csv_io";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -176,28 +177,14 @@ const FINAL = resolve(DIR, "leads-final-v4.csv");
 const ALL_QUAL = resolve(DIR, "leads-all-with-qual-v2.csv");
 
 /**
- * Full-state CSV parser. Handles multi-line quoted fields (e.g., rendered_body
- * with embedded newlines) by tracking quote state across the whole input.
+ * Local adapter — uses shared parseCsv (from _csv_io.ts) but reshapes the
+ * output back into the positional (string[][]) form this CLI was originally
+ * written against, so the existing `r[index]` access patterns keep working.
  */
-function parseCsv(text: string) {
-  text = text.replace(/\r\n/g, "\n");
-  const rows: string[][] = [];
-  let cur = "";
-  let row: string[] = [];
-  let inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      if (inQ && text[i + 1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (c === "," && !inQ) { row.push(cur); cur = ""; }
-    else if (c === "\n" && !inQ) { row.push(cur); rows.push(row); cur = ""; row = []; }
-    else cur += c;
-  }
-  if (cur.length || row.length) { row.push(cur); rows.push(row); }
-  // Filter empty trailing rows
-  const cleaned = rows.filter((r) => r.length > 1 || (r.length === 1 && r[0].length > 0));
-  return { headers: cleaned[0], rows: cleaned.slice(1) };
+function parseCsv(text: string): { headers: string[]; rows: string[][] } {
+  const parsed = parseCsvShared(text);
+  const rows = parsed.rows.map((obj) => parsed.headers.map((h) => obj[h] ?? ''));
+  return { headers: parsed.headers, rows };
 }
 function wc(s: string): number {
   return s.split(/\s+/).filter((x) => x.length).length;

@@ -217,15 +217,9 @@ async function runCli() {
   }
 
   const { readFileSync, writeFileSync } = await import('fs');
-  const text = readFileSync(inputCsv, 'utf8').replace(/\r\n/g, '\n');
-  const lines = text.split('\n').filter(Boolean);
-  const headers = lines[0].split(',');
-  const rows = lines.slice(1).map(line => {
-    const vals = line.split(',');
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => obj[h] = vals[i] ?? '');
-    return obj;
-  });
+  const { parseCsv, writeCsv } = await import('./_csv_io');
+  const text = readFileSync(inputCsv, 'utf8');
+  const { headers, rows } = parseCsv(text);
 
   const qualified = rows.filter(r => r.qualified === 'true');
   console.error(`Processing ${qualified.length} qualified leads`);
@@ -262,11 +256,7 @@ async function runCli() {
   }
 
   const outHeaders = [...headers, 'enrichment_tier', 'fired_queries', 'cache_hit', 'skipped_ineligible'];
-  const outLines = [outHeaders.join(',')];
-  for (const r of results) {
-    outLines.push(outHeaders.map(h => r[h] ?? '').join(','));
-  }
-  writeFileSync(outputCsv, outLines.join('\n'));
+  writeFileSync(outputCsv, writeCsv(results, outHeaders));
   console.error(`Wrote ${results.length} rows to ${outputCsv}`);
 }
 
