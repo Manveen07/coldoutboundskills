@@ -246,6 +246,94 @@ describe('renderLead', () => {
     expect(wordCount).toBeGreaterThanOrEqual(20);
   });
 
+  // Fix #4 tests — compress anchor proof to outcome-only when signal-bridge present
+  it('Fix #4: Variant B with bridge present → proof is first sentence only', async () => {
+    writeFileSync(resolve(TEST_DIR, 'frankies.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'frankies.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: 'Frankies Bikinis has raised $18M.', found: true, freshness_days: 20 },
+      company_snippet: { fact: 'Frankies Bikinis: premium swimwear DTC.' },
+    }));
+
+    const lead = {
+      person_id: 'pid_fix4a', first_name: 'Maya', full_name: 'Maya B', current_job_title: 'VP Marketing',
+      company_name: 'Frankies Bikinis', company_domain: 'frankies.com', qual_confidence: 0.85,
+      primary_vertical: 'apparel', assigned_variant: 'B' as const, vertical_anchor: 'Bombas',
+      ai_similarity_dimension: 'DTC swimwear channel mix',
+      ai_brand_category: 'premium swimwear',
+      ai_role_hook: 'VP Marketing owns acquisition mix at premium swimwear brand',
+    };
+
+    const aiInvoke = vi.fn().mockResolvedValue('Post-funding swimwear brands typically reinvest in customer acquisition.');
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    expect(result.signal_used).toBe('funding');
+    // Bridge is present → compressed proof only: "We run direct mail for Bombas."
+    expect(result.email1_body).toContain('We run direct mail for Bombas.');
+    // Second sentence of Bombas proof must NOT appear
+    expect(result.email1_body).not.toContain('Scaled from a single test');
+  });
+
+  it('Fix #4: Variant B without bridge (fallback signal) → full proof retained', async () => {
+    writeFileSync(resolve(TEST_DIR, 'nobridge.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'nobridge.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: null, found: false },
+      company_snippet: { fact: 'NoBridge: a DTC apparel brand.' },
+    }));
+
+    const lead = {
+      person_id: 'pid_fix4b', first_name: 'Chris', full_name: 'Chris T', current_job_title: 'VP Marketing',
+      company_name: 'NoBridge', company_domain: 'nobridge.com', qual_confidence: 0.85,
+      primary_vertical: 'apparel', assigned_variant: 'B' as const, vertical_anchor: 'Bombas',
+      ai_similarity_dimension: 'DTC apparel channel mix',
+      ai_brand_category: 'premium apparel',
+      ai_role_hook: 'VP Marketing owns acquisition mix',
+    };
+
+    const aiInvoke = vi.fn();
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    // company_snippet → no bridge call → no bridge → full proof retained
+    expect(result.signal_used).toBe('company_snippet');
+    expect(aiInvoke).not.toHaveBeenCalled();
+    // Full Bombas proof including second sentence
+    expect(result.email1_body).toContain('Scaled from a single test into their core profitable acquisition channel');
+  });
+
+  it('Fix #4: single-sentence anchor proof (Serena & Lily) compresses to same string + one period', async () => {
+    writeFileSync(resolve(TEST_DIR, 'serenalily.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'serenalily.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: 'Serena & Lily raised $30M Series C in February 2026.', found: true, freshness_days: 15 },
+      company_snippet: { fact: 'Serena & Lily: premium home DTC brand.' },
+    }));
+
+    const lead = {
+      person_id: 'pid_fix4c', first_name: 'Jordan', full_name: 'Jordan L', current_job_title: 'CMO',
+      company_name: 'Serena & Lily', company_domain: 'serenalily.com', qual_confidence: 0.85,
+      primary_vertical: 'home', assigned_variant: 'B' as const, vertical_anchor: 'Serena & Lily',
+      ai_similarity_dimension: 'premium home DTC',
+      ai_brand_category: 'premium home',
+      ai_role_hook: 'CMO owns acquisition mix',
+    };
+
+    const aiInvoke = vi.fn().mockResolvedValue('Home brands at that funding stage benchmark acquisition fast.');
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    expect(result.signal_used).toBe('funding');
+    // Single-sentence proof; compressProof must return it unchanged + one period
+    expect(result.email1_body).toContain("We've been running direct mail for Serena & Lily for 11 years.");
+    // Confirm no double period
+    expect(result.email1_body).not.toContain('..');
+  });
+
   it('Variant B Email 1 does not contain duplicate "sits in the same lane" sentences (Bug 5 regression)', async () => {
     writeFileSync(resolve(TEST_DIR, 'faherty.com.json'), JSON.stringify({
       schema_version: '1.0',

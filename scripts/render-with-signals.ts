@@ -101,6 +101,15 @@ const E2_BACK_REF_TEMPLATES: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Fix #4 — compress multi-sentence anchor proof to first sentence only.
+ * Used when a signal-bridge is present so we don't stack two proof points.
+ */
+function compressProof(proof: string): string {
+  const parts = proof.split(/\.\s/);
+  return parts[0] + '.';
+}
+
 function subjectForVariant(lead: LeadInput): string {
   if (lead.assigned_variant === 'B' && lead.vertical_anchor) {
     return `the ${lead.vertical_anchor.toLowerCase()} playbook`;
@@ -124,10 +133,13 @@ function buildEmail1(
       /\{\{company_name\}\}/g,
       lead.company_name
     );
+    // Fix #4: when a bridge is present, compress to first sentence only (one proof point rule).
+    // compressProof already appends a period; bare proof does not end with one, so we add it.
+    const displayProof = bridge ? compressProof(proof) : `${proof}.`;
     return [
       `${lead.first_name}, ${factLine}`.trim(),
       ``,
-      `${proof}.`,
+      `${displayProof}`,
       ``,
       `${lead.company_name} sits in the same lane on ${lead.ai_similarity_dimension || ''}.`,
       ``,
