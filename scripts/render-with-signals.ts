@@ -73,11 +73,11 @@ type SubjectStrategy = 'anchor' | 'category' | 'signal' | 'mixed';
  * `{{company_name}}` is the only variable interpolated at render time.
  */
 const ANCHOR_PROOF: Record<string, string> = {
-  'Serena & Lily': "year 11 of running direct mail for Serena & Lily. {{company_name}} reminds me of where they were around 2017",
-  'Bombas': "we run direct mail for Bombas. Scaled from a single test into their core profitable acquisition channel. {{company_name}} sits in the same lane",
-  'AG': "we run direct mail for AG, built on transactional-data targeting for higher-value denim buyers. {{company_name}} is in the same bracket",
-  'Sundance': "we run direct mail for Sundance. Lifted new customer acquisition 36 points in six months. {{company_name}} reminds me of them",
-  'Title Nine': "we run paid digital for Title Nine. Restructured funnel-based paid media for clean ROAS lift on prospecting. {{company_name}} sits in the same lane",
+  'Serena & Lily': "We've been running direct mail for Serena & Lily for 11 years. {{company_name}} reminds me of where they were around 2017",
+  'Bombas': "We run direct mail for Bombas. Scaled from a single test into their core profitable acquisition channel. {{company_name}} sits in the same lane",
+  'AG': "We run direct mail for AG, built on transactional-data targeting for higher-value denim buyers. {{company_name}} is in the same bracket",
+  'Sundance': "We run direct mail for Sundance. Lifted new customer acquisition 36 points in six months. {{company_name}} reminds me of them",
+  'Title Nine': "We run paid digital for Title Nine. Restructured funnel-based paid media for clean ROAS lift on prospecting. {{company_name}} sits in the same lane",
   'Birkenstock': "Birkenstock runs our Swift programmatic direct mail. Co-op transactional data lifted their ecommerce conversion. {{company_name}} could test the same play",
 };
 
@@ -123,7 +123,7 @@ function buildEmail1(
     return [
       `${lead.first_name}, ${factLine}`.trim(),
       ``,
-      `We run direct mail for ${lead.vertical_anchor}. ${proof}.`,
+      `${proof}.`,
       ``,
       `${lead.company_name} sits in the same lane on ${lead.ai_similarity_dimension || ''}.`,
       ``,
@@ -161,12 +161,10 @@ function buildEmail2(
   const stat2 = statRotator.nextFor(lead.person_id);
   const backRefLine = backRef ? `\n\n${backRef}` : '';
   return [
-    `${lead.first_name}, bumping this up. ${stat2}.${backRefLine}`,
+    `${lead.first_name}, bumping this up. Quick number from our portfolio: ${stat2}.${backRefLine}`,
     ``,
     `Want me to send the category benchmark deck?`,
-  ]
-    .join('\n')
-    .trim();
+  ].join('\n').trim();
 }
 
 function buildEmail3(lead: LeadInput): string {
