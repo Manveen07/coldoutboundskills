@@ -313,11 +313,13 @@ async function runCli() {
     return obj;
   });
 
-  // AI invoker — placeholder. Task 17 wires OpenRouter.
-  const aiInvoke = async (prompt: string): Promise<string> => {
-    console.error('AI subagent invocation pending Task 17 (OpenRouter). Returning placeholder.');
-    return 'Brands at that stage typically start asking the channel-mix question.';
-  };
+  const orKey = process.env.OPENROUTER_API_KEY;
+  if (!orKey) {
+    console.error('ERROR: OPENROUTER_API_KEY not set in .env');
+    process.exit(1);
+  }
+  const { openRouterInvoke } = await import('./_ai_subagent');
+  const aiInvoke = (p: string) => openRouterInvoke(p, orKey);
 
   const { StatRotator } = await import('./_stat_rotator');
   const rotator = new StatRotator();
