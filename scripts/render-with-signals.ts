@@ -20,6 +20,7 @@ import { computeTier, EnrichmentTier } from './_lib_tier';
 import { selectSignal, SelectedSignal } from './_signal_selector';
 import { writeBridgeSentence, AiInvoker } from './_bridge_writer';
 import { StatRotator } from './_stat_rotator';
+import { findBannedWords, findBannedStarts } from './_lib_banned';
 
 export interface LeadInput {
   person_id: string;
@@ -232,6 +233,21 @@ export async function renderLead(
 
   // Step 3 — signal selection
   let selected: SelectedSignal = selectSignal(companySidecar, null);
+
+  // Step 3b — Bug 2: defense-in-depth sanitization. If the selected
+  // signal_fact contains banned words or sentence-starts, collapse the
+  // selection to fallback so we don't render dirty copy.
+  if (selected.signal_used !== 'fallback' && selected.signal_fact) {
+    const banned = findBannedWords(selected.signal_fact);
+    const bannedStarts = findBannedStarts(selected.signal_fact);
+    if (banned.length > 0 || bannedStarts.length > 0) {
+      selected = {
+        signal_used: 'fallback',
+        signal_fact: null,
+        signal_freshness_days: 0,
+      };
+    }
+  }
 
   // Step 4 — bridge generation for real signals
   let bridge = '';

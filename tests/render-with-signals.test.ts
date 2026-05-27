@@ -161,6 +161,64 @@ describe('renderLead', () => {
     expect(result.email1_body).toContain('Brands at that funding stage');
   });
 
+  it('collapses to fallback when funding fact contains banned word (Bug 2)', async () => {
+    writeFileSync(resolve(TEST_DIR, 'bannedco.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'bannedco.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: 'BannedCo is the best DTC brand to raise $10M Series A this year.', found: true, freshness_days: 14 },
+      company_snippet: { fact: null },
+    }));
+
+    const lead = {
+      person_id: 'pid_b1', first_name: 'Pat', full_name: 'Pat B', current_job_title: 'VP Marketing',
+      company_name: 'BannedCo', company_domain: 'bannedco.com', qual_confidence: 0.85,
+      primary_vertical: 'apparel', assigned_variant: 'B' as const, vertical_anchor: 'Bombas',
+      ai_similarity_dimension: 'DTC channel mix',
+      ai_brand_category: 'premium apparel',
+      ai_role_hook: 'VP Marketing owns acquisition mix',
+    };
+
+    const aiInvoke = vi.fn().mockResolvedValue('Brands at this funding stage benchmark fast.');
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    // signal collapsed to fallback
+    expect(result.signal_used).toBe('fallback');
+    expect(result.signal_fact).toBe('');
+    expect(aiInvoke).not.toHaveBeenCalled();
+    // no fact line in body
+    expect(result.email1_body).not.toContain('best DTC');
+  });
+
+  it('renders clean funding fact normally (Bug 2 regression guard)', async () => {
+    writeFileSync(resolve(TEST_DIR, 'cleanco.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'cleanco.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: 'CleanCo raised $12M Series B in April 2026.', found: true, freshness_days: 20 },
+      company_snippet: { fact: null },
+    }));
+
+    const lead = {
+      person_id: 'pid_b2', first_name: 'Robin', full_name: 'Robin C', current_job_title: 'VP Marketing',
+      company_name: 'CleanCo', company_domain: 'cleanco.com', qual_confidence: 0.85,
+      primary_vertical: 'apparel', assigned_variant: 'B' as const, vertical_anchor: 'Bombas',
+      ai_similarity_dimension: 'DTC channel mix',
+      ai_brand_category: 'premium apparel',
+      ai_role_hook: 'VP Marketing owns acquisition mix',
+    };
+
+    const aiInvoke = vi.fn().mockResolvedValue('Brands at that funding stage start asking the channel-mix question.');
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    expect(result.signal_used).toBe('funding');
+    expect(aiInvoke).toHaveBeenCalled();
+    expect(result.email1_body).toContain('CleanCo raised $12M Series B');
+    expect(result.email1_body).toContain('Brands at that funding stage');
+  });
+
   it('Email 2 is <=65 words (Amendment 7)', async () => {
     writeFileSync(resolve(TEST_DIR, 'co.com.json'), JSON.stringify({
       schema_version: '1.0',
