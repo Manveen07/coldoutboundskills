@@ -1,5 +1,6 @@
 import { resolve } from 'path';
-import { readSidecar, writeSidecar, computeTier, type SignalSidecar } from './_lib_signals';
+import { readSidecar, writeSidecar, type SignalSidecar } from './_lib_signals';
+import { computeTier } from './_lib_tier';
 import { getQueriesForTier, type SignalType } from './_query_templates';
 import { serperSearch } from './_serper_client';
 import {

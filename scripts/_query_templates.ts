@@ -1,4 +1,4 @@
-import type { EnrichmentTier } from './_lib_signals';
+import type { EnrichmentTier } from './_lib_tier';
 
 export type SignalType = 'funding' | 'press' | 'launch' | 'snippet' | 'new_role' | 'promotion';
 
