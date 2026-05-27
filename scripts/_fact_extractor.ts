@@ -10,6 +10,15 @@ const PRESS_PATTERNS = /\b(announces|announced|press release|opening|launches|de
 const LAUNCH_PATTERNS = /\b(launches|launched|debuts|debut|introduces|new collection|new line|new product)\b/i;
 const ACQUISITION_PATTERNS = /\b(acquires|acquired|acquisition|to acquire|buys|bought)\b/i;
 
+const NEGATION_PATTERNS = [
+  /\bhas not raised\b/i,
+  /\bnot raised any\b/i,
+  /\bno funding rounds?\b/i,
+  /\bhas not received any funding\b/i,
+  /\bno disclosed funding\b/i,
+  /\bhasn't raised\b/i,
+];
+
 function freshnessDaysFromIso(iso: string): number {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return 999;
@@ -22,6 +31,11 @@ export function extractFundingFact(raw: any, company: string): ExtractedFact | n
   for (const item of orgs) {
     const text = `${item.title || ''} ${item.snippet || ''}`;
     if (FUNDING_PATTERNS.test(text)) {
+      // Skip negative funding statements so they don't poison the extraction.
+      // Stay in the loop so a subsequent organic result can still match.
+      if (NEGATION_PATTERNS.some((p) => p.test(text))) {
+        continue;
+      }
       return {
         fact: item.snippet?.trim() || item.title?.trim() || '',
         fact_date: item.date,

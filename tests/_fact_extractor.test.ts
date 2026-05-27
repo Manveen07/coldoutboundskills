@@ -32,6 +32,30 @@ describe('extractFundingFact', () => {
   it('returns null when organic is empty', () => {
     expect(extractFundingFact({ organic: [] }, 'X')).toBeNull();
   });
+
+  it('rejects negative funding snippets (Bug 4)', () => {
+    const raw = {
+      organic: [{
+        title: 'Acme funding history',
+        snippet: 'Acme has not raised any funding rounds yet according to public records.',
+        date: '2026-04-01',
+      }],
+    };
+    expect(extractFundingFact(raw, 'Acme')).toBeNull();
+  });
+
+  it('returns positive funding fact (Bug 4 regression guard)', () => {
+    const raw = {
+      organic: [{
+        title: 'Acme funding',
+        snippet: 'Acme raised $18M Series B in March 2026 led by Sequoia.',
+        date: '2026-03-15',
+      }],
+    };
+    const fact = extractFundingFact(raw, 'Acme');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toMatch(/series b/i);
+  });
 });
 
 describe('extractSnippetFact', () => {
