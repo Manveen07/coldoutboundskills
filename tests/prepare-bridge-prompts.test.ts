@@ -39,7 +39,7 @@ function writeSnippetOnlySidecar(domain: string) {
 }
 
 describe('generateBridgeTasks', () => {
-  it('generates one task per lead with funding signal', () => {
+  it('generates one task per lead with funding signal', async () => {
     writeFundingSidecar('a.com');
     writeFundingSidecar('b.com');
     writeFundingSidecar('c.com');
@@ -50,7 +50,7 @@ describe('generateBridgeTasks', () => {
       { person_id: 'p3', first_name: 'Cal',  company_name: 'C', company_domain: 'c.com' },
     ];
 
-    const tasks = generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
+    const tasks = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
 
     expect(tasks.length).toBe(3);
     for (const t of tasks) {
@@ -63,35 +63,35 @@ describe('generateBridgeTasks', () => {
     }
   });
 
-  it('skips leads whose selected signal is fallback (no sidecar)', () => {
+  it('skips leads whose selected signal is fallback (no sidecar)', async () => {
     // no sidecar written for nofile.com → readSidecar returns null → skip
     const rows = [
       { person_id: 'p_fb', first_name: 'F', company_name: 'F', company_domain: 'nofile.com' },
     ];
 
-    const tasks = generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
+    const tasks = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
 
     expect(tasks.length).toBe(0);
   });
 
-  it('skips leads whose selected signal is company_snippet', () => {
+  it('skips leads whose selected signal is company_snippet', async () => {
     writeSnippetOnlySidecar('snip.com');
 
     const rows = [
       { person_id: 'p_snip', first_name: 'S', company_name: 'Snip', company_domain: 'snip.com' },
     ];
 
-    const tasks = generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
+    const tasks = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
 
     expect(tasks.length).toBe(0);
   });
 
-  it('writes correct schema_version and ISO generated_at when serialized', () => {
+  it('writes correct schema_version and ISO generated_at when serialized', async () => {
     writeFundingSidecar('a.com');
     const rows = [
       { person_id: 'p1', first_name: 'A', company_name: 'A', company_domain: 'a.com' },
     ];
-    const tasks = generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
+    const tasks = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
 
     const file = {
       schema_version: '1.0',
@@ -102,5 +102,51 @@ describe('generateBridgeTasks', () => {
     expect(file.schema_version).toBe('1.0');
     expect(file.generated_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     expect(file.tasks.length).toBe(1);
+  });
+
+  it('with aiInvoke always returning generic_for_category → task list is empty', async () => {
+    writeFundingSidecar('a.com');
+    writeFundingSidecar('b.com');
+
+    const rows = [
+      { person_id: 'p1', first_name: 'Alex', company_name: 'A', company_domain: 'a.com', primary_vertical: 'Activewear' },
+      { person_id: 'p2', first_name: 'Bea',  company_name: 'B', company_domain: 'b.com', primary_vertical: 'Swimwear' },
+    ];
+
+    const aiInvoke = async (_prompt: string) => 'generic_for_category';
+    const tasks = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR, aiInvoke);
+
+    expect(tasks.length).toBe(0);
+  });
+
+  it('with aiInvoke always returning specific_event → task list same as without aiInvoke', async () => {
+    writeFundingSidecar('a.com');
+    writeFundingSidecar('b.com');
+
+    const rows = [
+      { person_id: 'p1', first_name: 'Alex', company_name: 'A', company_domain: 'a.com', primary_vertical: 'Activewear' },
+      { person_id: 'p2', first_name: 'Bea',  company_name: 'B', company_domain: 'b.com', primary_vertical: 'Swimwear' },
+    ];
+
+    const aiInvoke = async (_prompt: string) => 'specific_event';
+    const tasksWithClassify = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR, aiInvoke);
+    const tasksWithout = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
+
+    expect(tasksWithClassify.length).toBe(tasksWithout.length);
+    expect(tasksWithClassify.map(t => t.person_id)).toEqual(tasksWithout.map(t => t.person_id));
+  });
+
+  it('without aiInvoke → classification skipped, same behavior as current', async () => {
+    writeFundingSidecar('a.com');
+
+    const rows = [
+      { person_id: 'p1', first_name: 'Alex', company_name: 'A', company_domain: 'a.com', primary_vertical: 'Activewear' },
+    ];
+
+    // No aiInvoke passed
+    const tasks = await generateBridgeTasks(rows, TEST_DIR, RESPONSES_DIR);
+
+    expect(tasks.length).toBe(1);
+    expect(tasks[0].person_id).toBe('p1');
   });
 });

@@ -14,8 +14,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { readSidecar } from './_lib_signals';
 import { selectSignal } from './_signal_selector';
-import { buildBridgePrompt } from './_bridge_writer';
+import { buildBridgePrompt, AiInvoker } from './_bridge_writer';
 import { parseCsv } from './_csv_io';
+import { classifyFactUniqueness } from './_uniqueness_classifier';
 
 export interface BridgeTask {
   person_id: string;
@@ -55,11 +56,12 @@ const NEEDS_BRIDGE = new Set([
  *
  * Exported for testability (the CLI runner is a thin wrapper around this).
  */
-export function generateBridgeTasks(
+export async function generateBridgeTasks(
   rows: Record<string, string>[],
   sidecarDir: string,
-  responsesDir: string
-): BridgeTask[] {
+  responsesDir: string,
+  aiInvoke?: AiInvoker,
+): Promise<BridgeTask[]> {
   const tasks: BridgeTask[] = [];
 
   for (const lead of rows) {
@@ -71,6 +73,22 @@ export function generateBridgeTasks(
     const selected = selectSignal(sidecar, null);
     if (!NEEDS_BRIDGE.has(selected.signal_used)) continue;
     if (!selected.signal_fact) continue;
+
+    // Uniqueness classification — only when aiInvoke is provided (opt-in).
+    if (aiInvoke) {
+      const verdict = await classifyFactUniqueness(
+        {
+          signal_type: selected.signal_used,
+          signal_fact: selected.signal_fact,
+          company_name: lead.company_name,
+          primary_vertical: lead.primary_vertical ?? '',
+        },
+        aiInvoke,
+      );
+      if (verdict === 'generic_for_category') {
+        continue;
+      }
+    }
 
     const ctx = {
       signal_used: selected.signal_used,
@@ -100,7 +118,7 @@ async function runCli() {
   const responsesDir = process.argv[4] || 'data/bridge-responses';
   if (!inputCsv) {
     console.error(
-      'Usage: tsx scripts/prepare-bridge-prompts.ts <leads-with-signals.csv> [bridge-tasks.json] [responses-dir]'
+      'Usage: tsx scripts/prepare-bridge-prompts.ts <leads-with-signals.csv> [bridge-tasks.json] [responses-dir] [--classify]'
     );
     process.exit(1);
   }
@@ -108,7 +126,13 @@ async function runCli() {
   const text = readFileSync(inputCsv, 'utf8');
   const { rows } = parseCsv(text);
 
-  const tasks = generateBridgeTasks(rows, 'data/signals', responsesDir);
+  let aiInvoke: AiInvoker | undefined;
+  if (process.argv.includes('--classify')) {
+    const { makeFileBasedInvoker } = await import('./_file_based_invoker');
+    aiInvoke = makeFileBasedInvoker(responsesDir);
+  }
+
+  const tasks = await generateBridgeTasks(rows, 'data/signals', responsesDir, aiInvoke);
 
   const out: BridgeTasksFile = {
     schema_version: '1.0',
