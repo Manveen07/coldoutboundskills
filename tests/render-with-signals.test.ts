@@ -69,7 +69,10 @@ describe('renderLead', () => {
 
     // Snippet found → signal_used will be 'company_snippet' not 'fallback'
     expect(result.signal_used).toBe('company_snippet');
-    expect(result.email1_body).toContain('30 stores');
+    // Bug 3: company_snippet is treated as fallback for E1 — no fact line in body
+    expect(result.email1_body).not.toContain('30 stores');
+    // Anchor proof block still renders
+    expect(result.email1_body).toContain('Bombas');
   });
 
   it('renders Variant C with stat rotation', async () => {
@@ -97,6 +100,65 @@ describe('renderLead', () => {
     // Email 2 must include a DIFFERENT stat (no repeat per Amendment 6)
     expect(result.email2_body).toMatch(/103%|3-8x|20%|4,000\+|300\+/);
     // The two stats in E1 and E2 should be different — find them and check
+  });
+
+  it('company_snippet leads have NO fact line in Email 1 + no bridge call (Bug 3)', async () => {
+    writeFileSync(resolve(TEST_DIR, 'snippetco.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'snippetco.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: null, found: false },
+      company_snippet: { fact: 'SnippetCo is a DTC apparel brand with 12 retail stores.' },
+    }));
+
+    const lead = {
+      person_id: 'pid_snip', first_name: 'Casey', full_name: 'Casey K', current_job_title: 'VP Marketing',
+      company_name: 'SnippetCo', company_domain: 'snippetco.com', qual_confidence: 0.85,
+      primary_vertical: 'apparel', assigned_variant: 'B' as const, vertical_anchor: 'Bombas',
+      ai_similarity_dimension: 'DTC channel mix',
+      ai_brand_category: 'premium apparel',
+      ai_role_hook: 'VP Marketing owns acquisition mix',
+    };
+
+    const aiInvoke = vi.fn().mockResolvedValue('Brands at this stage benchmark fast.');
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    expect(result.signal_used).toBe('company_snippet');
+    // No bridge generation for company_snippet
+    expect(aiInvoke).not.toHaveBeenCalled();
+    // Snippet text MUST NOT appear in email body
+    expect(result.email1_body).not.toContain('SnippetCo is a DTC apparel brand');
+    // E1 opens with the first-name + anchor proof; no fact line
+    expect(result.email1_body).toMatch(/^Casey,\s*\n\nWe run direct mail for Bombas/);
+  });
+
+  it('real funding signal renders fact line + invokes bridge (Bug 3 regression guard)', async () => {
+    writeFileSync(resolve(TEST_DIR, 'realfund.com.json'), JSON.stringify({
+      schema_version: '1.0',
+      domain: 'realfund.com',
+      fetched_at: new Date().toISOString(),
+      funding: { fact: 'RealFund raised $22M Series B in April 2026.', found: true, freshness_days: 14 },
+      company_snippet: { fact: 'RealFund snippet.' },
+    }));
+
+    const lead = {
+      person_id: 'pid_real', first_name: 'Jamie', full_name: 'Jamie R', current_job_title: 'VP Marketing',
+      company_name: 'RealFund', company_domain: 'realfund.com', qual_confidence: 0.85,
+      primary_vertical: 'apparel', assigned_variant: 'B' as const, vertical_anchor: 'Bombas',
+      ai_similarity_dimension: 'DTC channel mix',
+      ai_brand_category: 'premium apparel',
+      ai_role_hook: 'VP Marketing owns acquisition mix',
+    };
+
+    const aiInvoke = vi.fn().mockResolvedValue('Brands at that funding stage start asking the channel-mix question.');
+    const rotator = new StatRotator();
+    const result = await renderLead(lead, aiInvoke, TEST_DIR, rotator);
+
+    expect(result.signal_used).toBe('funding');
+    expect(aiInvoke).toHaveBeenCalled();
+    expect(result.email1_body).toContain('RealFund raised $22M Series B');
+    expect(result.email1_body).toContain('Brands at that funding stage');
   });
 
   it('Email 2 is <=65 words (Amendment 7)', async () => {

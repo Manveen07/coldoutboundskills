@@ -113,7 +113,10 @@ function buildEmail1(
   bridge: string,
   statRotator: StatRotator
 ): string {
-  const factLine = sig.signal_fact ? `${sig.signal_fact} ${bridge}`.trim() : '';
+  const skipFactLine =
+    sig.signal_used === 'fallback' || sig.signal_used === 'company_snippet';
+  const factLine =
+    !skipFactLine && sig.signal_fact ? `${sig.signal_fact} ${bridge}`.trim() : '';
 
   if (lead.assigned_variant === 'B' && lead.vertical_anchor) {
     const proof = (ANCHOR_PROOF[lead.vertical_anchor] || '').replace(

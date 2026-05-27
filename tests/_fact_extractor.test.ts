@@ -39,13 +39,45 @@ describe('extractSnippetFact', () => {
     const raw = {
       organic: [{
         title: 'Havertys Furniture - Quality Home Furniture',
-        snippet: 'Shop Havertys for quality furniture across 120+ stores with free delivery.',
+        snippet: 'Havertys is a quality furniture retailer across 120+ stores with free delivery.',
         link: 'https://havertys.com',
       }],
     };
     const fact = extractSnippetFact(raw, 'Havertys Furniture');
     expect(fact).not.toBeNull();
     expect(fact!.fact).toContain('120+ stores');
+  });
+
+  it('rejects snippets starting with stopword phrases', () => {
+    const raw = {
+      organic: [{
+        title: 'Paul Fredrick',
+        snippet: 'Perfect Fit Guarantee. Explore The Latest Styles. Shop men\'s clothing online.',
+      }],
+    };
+    expect(extractSnippetFact(raw, 'Paul Fredrick')).toBeNull();
+  });
+
+  it('still accepts clean snippets that do not match stopwords', () => {
+    const raw = {
+      organic: [{
+        title: 'Acme Brand',
+        snippet: 'Acme Brand is a New York-based DTC retailer of premium home furnishings.',
+      }],
+    };
+    const fact = extractSnippetFact(raw, 'Acme Brand');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toContain('DTC retailer');
+  });
+
+  it('rejects copyright-only snippets', () => {
+    const raw = {
+      organic: [{
+        title: 'Some Site',
+        snippet: '© 2026 Some Site Inc. All rights reserved.',
+      }],
+    };
+    expect(extractSnippetFact(raw, 'Some Site')).toBeNull();
   });
 });
 

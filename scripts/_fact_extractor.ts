@@ -77,9 +77,28 @@ export function extractAcquisitionFact(raw: any, company: string): ExtractedFact
   return null;
 }
 
+const SNIPPET_STOPWORD_STARTS = [
+  /^perfect fit\b/i,
+  /^explore\s/i,
+  /^©/,
+  /^shop\s/i,
+  /^buy\s/i,
+  /^free shipping\b/i,
+  /^free returns\b/i,
+  /^discover\s/i,
+  /^operates in the\b/i,
+  /^the latest\b/i,
+  /^view our\b/i,
+];
+const SNIPPET_COPYRIGHT_ONLY = /^©.*\d{4}/;
+
 export function extractSnippetFact(raw: any, company: string): ExtractedFact | null {
   const orgs = raw?.organic ?? [];
   if (orgs.length === 0) return null;
   const first = orgs[0];
-  return { fact: first.snippet?.trim() || first.title?.trim() || '' };
+  const snippet = (first.snippet?.trim() || first.title?.trim() || '');
+  if (!snippet) return null;
+  if (SNIPPET_COPYRIGHT_ONLY.test(snippet)) return null;
+  if (SNIPPET_STOPWORD_STARTS.some((p) => p.test(snippet))) return null;
+  return { fact: snippet };
 }
