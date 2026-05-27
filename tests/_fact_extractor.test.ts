@@ -164,3 +164,117 @@ describe('extractAcquisitionFact', () => {
     expect(fact).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Fix #1 — Rule 1: First-sentence truncation
+// ---------------------------------------------------------------------------
+describe('Fix #1 Rule 1 — first-sentence truncation', () => {
+  it('funding: multi-sentence snippet returns only first sentence', () => {
+    const raw = {
+      organic: [{
+        snippet: 'Frankies Bikinis raised $18M in funding. The company has 95 active competitors. Its top competitors are funded brands.',
+        date: '2026-01-01',
+      }],
+    };
+    const fact = extractFundingFact(raw, 'Frankies Bikinis');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toBe('Frankies Bikinis raised $18M in funding.');
+  });
+
+  it('launch: multi-sentence snippet returns only first sentence', () => {
+    const raw = {
+      organic: [{
+        snippet: 'Acme launches its spring collection. They are targeting Gen Z shoppers. Free shipping available.',
+        date: '2026-02-01',
+      }],
+    };
+    const fact = extractLaunchFact(raw, 'Acme');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toBe('Acme launches its spring collection.');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fix #1 — Rule 2: Pronoun-residue rejection
+// ---------------------------------------------------------------------------
+describe('Fix #1 Rule 2 — pronoun-residue rejection', () => {
+  it('funding: item with "Its top" first sentence is skipped; third organic item returned', () => {
+    const raw = {
+      organic: [
+        { snippet: 'Its top competitors raised $8M. Acme raised $5M in seed.' },
+        { snippet: 'Their latest round closed at $10M in series B.' },
+        { snippet: 'Acme secured $12M in series C investment.' },
+      ],
+    };
+    const fact = extractFundingFact(raw, 'Acme');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toBe('Acme secured $12M in series C investment.');
+  });
+
+  it('funding: "The company" pronoun-led first sentence skipped', () => {
+    const raw = {
+      organic: [
+        { snippet: 'The company raised $3M in seed funding. Founded in 2020.' },
+        { snippet: 'BrandX raised $3M in a seed round.' },
+      ],
+    };
+    const fact = extractFundingFact(raw, 'BrandX');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toBe('BrandX raised $3M in a seed round.');
+  });
+
+  it('snippetFact: pronoun-led "Its " snippet returns null', () => {
+    const raw = {
+      organic: [{ snippet: 'Its top competitors include 10 funded brands.' }],
+    };
+    expect(extractSnippetFact(raw, 'Acme')).toBeNull();
+  });
+
+  it('snippetFact: "The company" snippet returns null', () => {
+    const raw = {
+      organic: [{ snippet: 'The company has 200 employees across 5 offices.' }],
+    };
+    expect(extractSnippetFact(raw, 'Acme')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fix #1 — Rule 3: Ellipsis strip
+// ---------------------------------------------------------------------------
+describe('Fix #1 Rule 3 — ellipsis strip', () => {
+  it('funding: trailing "..." stripped', () => {
+    const raw = {
+      organic: [{ snippet: 'Acme raised $7M in series A...' }],
+    };
+    const fact = extractFundingFact(raw, 'Acme');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toBe('Acme raised $7M in series A');
+  });
+
+  it('funding: trailing unicode ellipsis stripped', () => {
+    const raw = {
+      organic: [{ snippet: 'Acme raised $7M in series A…' }],
+    };
+    const fact = extractFundingFact(raw, 'Acme');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toBe('Acme raised $7M in series A');
+  });
+
+  it('funding: single trailing period preserved', () => {
+    const raw = {
+      organic: [{ snippet: 'Acme raised $7M in series A.' }],
+    };
+    const fact = extractFundingFact(raw, 'Acme');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).toBe('Acme raised $7M in series A.');
+  });
+
+  it('acquisition: trailing "..." stripped', () => {
+    const raw = {
+      organic: [{ snippet: 'BigCo acquired SmallCo for undisclosed terms...' }],
+    };
+    const fact = extractAcquisitionFact(raw, 'BigCo');
+    expect(fact).not.toBeNull();
+    expect(fact!.fact).not.toMatch(/\.\.\.$/);
+  });
+});

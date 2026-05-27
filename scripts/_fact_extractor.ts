@@ -19,6 +19,26 @@ const NEGATION_PATTERNS = [
   /\bhasn't raised\b/i,
 ];
 
+const PRONOUN_RESIDUE = /^(its |their |the company |the brand |they )/i;
+
+/**
+ * Applies 3 post-extraction cleaning rules to a raw snippet/title string.
+ * Rule 1: First-sentence truncation.
+ * Rule 2: Pronoun-residue rejection (returns null).
+ * Rule 3: Ellipsis strip.
+ */
+function cleanFact(raw: string): string | null {
+  // Rule 1: extract first sentence only
+  const m = raw.match(/^(.+?[.!?])(?:\s|$)/);
+  const sentence = m ? m[1] : raw;
+
+  // Rule 2: reject pronoun-led sentences
+  if (PRONOUN_RESIDUE.test(sentence)) return null;
+
+  // Rule 3: strip trailing ellipsis (2+ dots, or unicode ellipsis char), preserve single period
+  return sentence.replace(/…$|\.{2,}$/, '').trim();
+}
+
 function freshnessDaysFromIso(iso: string): number {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return 999;
@@ -36,8 +56,11 @@ export function extractFundingFact(raw: any, company: string): ExtractedFact | n
       if (NEGATION_PATTERNS.some((p) => p.test(text))) {
         continue;
       }
+      const raw_fact = item.snippet?.trim() || item.title?.trim() || '';
+      const fact = cleanFact(raw_fact);
+      if (fact === null) continue;
       return {
-        fact: item.snippet?.trim() || item.title?.trim() || '',
+        fact,
         fact_date: item.date,
         freshness_days: item.date ? freshnessDaysFromIso(item.date) : undefined,
       };
@@ -51,8 +74,11 @@ export function extractPressFact(raw: any, company: string): ExtractedFact | nul
   for (const item of orgs) {
     const text = `${item.title || ''} ${item.snippet || ''}`;
     if (PRESS_PATTERNS.test(text)) {
+      const raw_fact = item.snippet?.trim() || item.title?.trim() || '';
+      const fact = cleanFact(raw_fact);
+      if (fact === null) continue;
       return {
-        fact: item.snippet?.trim() || item.title?.trim() || '',
+        fact,
         fact_date: item.date,
         freshness_days: item.date ? freshnessDaysFromIso(item.date) : undefined,
       };
@@ -66,8 +92,11 @@ export function extractLaunchFact(raw: any, company: string): ExtractedFact | nu
   for (const item of orgs) {
     const text = `${item.title || ''} ${item.snippet || ''}`;
     if (LAUNCH_PATTERNS.test(text)) {
+      const raw_fact = item.snippet?.trim() || item.title?.trim() || '';
+      const fact = cleanFact(raw_fact);
+      if (fact === null) continue;
       return {
-        fact: item.snippet?.trim() || item.title?.trim() || '',
+        fact,
         fact_date: item.date,
         freshness_days: item.date ? freshnessDaysFromIso(item.date) : undefined,
       };
@@ -81,8 +110,11 @@ export function extractAcquisitionFact(raw: any, company: string): ExtractedFact
   for (const item of orgs) {
     const text = `${item.title || ''} ${item.snippet || ''}`;
     if (ACQUISITION_PATTERNS.test(text)) {
+      const raw_fact = item.snippet?.trim() || item.title?.trim() || '';
+      const fact = cleanFact(raw_fact);
+      if (fact === null) continue;
       return {
-        fact: item.snippet?.trim() || item.title?.trim() || '',
+        fact,
         fact_date: item.date,
         freshness_days: item.date ? freshnessDaysFromIso(item.date) : undefined,
       };
@@ -114,5 +146,7 @@ export function extractSnippetFact(raw: any, company: string): ExtractedFact | n
   if (!snippet) return null;
   if (SNIPPET_COPYRIGHT_ONLY.test(snippet)) return null;
   if (SNIPPET_STOPWORD_STARTS.some((p) => p.test(snippet))) return null;
-  return { fact: snippet };
+  const fact = cleanFact(snippet);
+  if (fact === null) return null;
+  return { fact };
 }
