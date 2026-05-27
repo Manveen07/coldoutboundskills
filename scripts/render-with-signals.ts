@@ -243,7 +243,9 @@ export async function renderLead(
           company_name: lead.company_name,
           first_name: lead.first_name,
         },
-        aiInvoke
+        aiInvoke,
+        2,
+        { person_id: lead.person_id }
       );
       if (result.valid) {
         bridge = result.bridge;
@@ -297,8 +299,19 @@ export async function renderLead(
 async function runCli() {
   const inputCsv = process.argv[2];
   const outputCsv = process.argv[3];
+  const responsesDir = process.argv[4];
   if (!inputCsv || !outputCsv) {
-    console.error('Usage: tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv>');
+    console.error('Usage: tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv> <responses-dir>');
+    process.exit(1);
+  }
+  if (!responsesDir) {
+    console.error(`ERROR: <responses-dir> required.
+
+Workflow:
+  1. npx tsx scripts/extract-signals.ts <input> <leads-with-signals.csv>
+  2. npx tsx scripts/prepare-bridge-prompts.ts <leads-with-signals.csv> <bridge-tasks.json>
+  3. (In Claude Code chat) dispatch Task subagents to populate <responses-dir>
+  4. npx tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv> <responses-dir>`);
     process.exit(1);
   }
 
@@ -313,13 +326,8 @@ async function runCli() {
     return obj;
   });
 
-  const orKey = process.env.OPENROUTER_API_KEY;
-  if (!orKey) {
-    console.error('ERROR: OPENROUTER_API_KEY not set in .env');
-    process.exit(1);
-  }
-  const { openRouterInvoke } = await import('./_ai_subagent');
-  const aiInvoke = (p: string) => openRouterInvoke(p, orKey);
+  const { makeFileBasedInvoker } = await import('./_file_based_invoker');
+  const aiInvoke = makeFileBasedInvoker(responsesDir);
 
   const { StatRotator } = await import('./_stat_rotator');
   const rotator = new StatRotator();

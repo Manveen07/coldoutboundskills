@@ -22,7 +22,10 @@ export interface BridgeResult {
   reason?: string;
 }
 
-export type AiInvoker = (prompt: string) => Promise<string>;
+export type AiInvoker = (
+  prompt: string,
+  context?: { person_id?: string }
+) => Promise<string>;
 
 /**
  * Bridge-writer prompt template. Amendment 5 anti-Twain rules are baked in:
@@ -63,8 +66,11 @@ Write ONE bridge sentence that follows the signal_fact naturally.`;
 /**
  * Build the bridge-writer prompt by interpolating context fields into
  * the template. Each placeholder is replaced exactly once.
+ *
+ * Exported so `prepare-bridge-prompts.ts` can reuse the same template
+ * when materializing per-lead prompts for subagent dispatch.
  */
-function buildPrompt(ctx: BridgeContext): string {
+export function buildBridgePrompt(ctx: BridgeContext): string {
   return BRIDGE_PROMPT_TEMPLATE.replace('{signal_used}', ctx.signal_used)
     .replace('{signal_fact}', ctx.signal_fact)
     .replace('{company_name}', ctx.company_name)
@@ -83,9 +89,10 @@ function buildPrompt(ctx: BridgeContext): string {
 export async function writeBridgeSentence(
   ctx: BridgeContext,
   aiInvoke: AiInvoker,
-  maxRetries = 2
+  maxRetries = 2,
+  invokerContext?: { person_id?: string }
 ): Promise<BridgeResult> {
-  const basePrompt = buildPrompt(ctx);
+  const basePrompt = buildBridgePrompt(ctx);
 
   let lastReason = '';
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -96,7 +103,7 @@ export async function writeBridgeSentence(
           '\n\nPREVIOUS ATTEMPT VIOLATED RULES. Try again, stricter. Reason: ' +
           lastReason;
 
-    const bridge = (await aiInvoke(prompt)).trim();
+    const bridge = (await aiInvoke(prompt, invokerContext)).trim();
 
     // Gate 1: banned words
     const bannedWords = findBannedWords(bridge);
