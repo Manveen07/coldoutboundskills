@@ -43,6 +43,7 @@ HARD RULES:
 - State a category-level pattern true for the signal TYPE only. NEVER editorialize about the company.
 - Banned words: smart, smarter, smartest, smartly, best, savvy, savviness, leading, leading-edge, top-tier, top-rated, great, exceptional, brilliant, brilliantly, amazing, awesome, fantastic, impressive, best-in-class, best-of-breed, fresh eyes, fresh perspective, fresh take, the right person, the right time, perfect timing, caught my eye, tends to, tend to, usually see, usually drives, often see, brands at this stage, brands at that stage, brands in this category, brands in that category.
 - One sentence. Period at end. Start with capital letter.
+- Your sentence MUST name its subject in the first 4 words. The subject must be a noun phrase identifying a cohort, category, or pattern — e.g. "Post-funding swimwear brands", "Collaboration launches", "DTC brands at Series A". Never open with an article + abstract noun ("The consideration...", "A strong signal...") unless the noun phrase names a cohort.
 
 NEVER use these patterns (critical, Amendment 5):
 - "Saw [company] is..." → use "[company]'s [event] [date]..." instead
@@ -52,6 +53,10 @@ NEVER use these patterns (critical, Amendment 5):
 - "X tends to..." / "X usually drives..." → use "X has driven..." with specific reference
 
 Hedge budget: ONE soft word ("likely", "probably", "often", "usually") MAXIMUM per sentence. Stack of hedges = rejection.
+
+Hedge rule: if your sentence restates the signal_fact → no hedge words. If your sentence predicts a behavior/pain FROM the fact → include exactly one hedge from: "typically", "often", "tend to", "usually". Do not use "tends to" or "usually drives" (banned above) — use "tend to" or "often" instead.
+
+Scraped-specifics rule: NEVER repeat a specific number or percentage from the signal_fact inside your bridge sentence. The fact line already stated it. Bridge should state the category pattern, not echo the data point.
 
 Anchor references: NEVER write "a brand targeting the same consumer" or "a peer brand". Use the specific BW client name from the input context. If no specific anchor available, omit the case-study sentence entirely.
 

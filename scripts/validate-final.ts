@@ -156,6 +156,41 @@ export function check14_universalTruth(row: { signal_bridge?: string; signal_fac
   return { pass: true };
 }
 
+const NOUN_SEEDS = new Set([
+  'brands', 'companies', 'launches', 'campaigns', 'funding', 'acquisition',
+  'launch', 'expansion', 'series', 'round', 'category', 'cohort', 'role',
+  'transition', 'operators', 'retailers', 'founders', 'teams',
+]);
+
+// Common articles/determiners/conjunctions that appear uppercase only because they
+// open a sentence — they do NOT count as cohort-noun evidence.
+const ARTICLE_EXCLUSIONS = new Set([
+  'the', 'a', 'an', 'this', 'that', 'these', 'those',
+  'when', 'as', 'if', 'while', 'once', 'after', 'before', 'since',
+]);
+
+export function check11d_bridgeNamesSubject(row: {
+  person_id?: string;
+  signal_bridge?: string;
+}): CheckResult {
+  const bridge = row.signal_bridge || '';
+  if (!bridge.trim()) return { pass: true };
+
+  const first4 = bridge.trim().split(/\s+/).slice(0, 4);
+  const hasNoun = first4.some(w =>
+    (/^[A-Z]/.test(w) && !ARTICLE_EXCLUSIONS.has(w.toLowerCase())) ||
+    NOUN_SEEDS.has(w.toLowerCase())
+  );
+
+  if (!hasNoun) {
+    return {
+      pass: false,
+      reason: `CHECK 11d: ${row.person_id ?? 'unknown'} bridge sentence first 4 words lack a noun: "${first4.join(' ')}"`,
+    };
+  }
+  return { pass: true };
+}
+
 export function check15_email2WordCap(row: { email2_body?: string }): CheckResult {
   const body = row.email2_body || '';
   if (!body) return { pass: true };
@@ -338,6 +373,20 @@ for (const [co, hooks] of Object.entries(sameCompany)) {
   }
 }
 console.error(`Check 10 (distinct role hooks):   ${dupRoleHooks === 0 ? "PASS" : "FAIL"} (${dupRoleHooks} companies with dup hooks)`);
+
+// Check 11d: bridge sentence must name its subject in first 4 words.
+const F_BRIDGE = idx("signal_bridge");
+let bridgeSubjectViolations = 0;
+for (const r of final.rows) {
+  const bridge = F_BRIDGE >= 0 ? (r[F_BRIDGE] || '') : '';
+  if (!bridge.trim()) continue;
+  const result = check11d_bridgeNamesSubject({ person_id: r[F_PID], signal_bridge: bridge });
+  if (!result.pass) {
+    bridgeSubjectViolations++;
+    issues.push(result.reason!);
+  }
+}
+console.error(`Check 11d (bridge names subject): ${bridgeSubjectViolations === 0 ? "PASS" : "FAIL"} (${bridgeSubjectViolations} violations)`);
 
 // Summary.
 console.error("");

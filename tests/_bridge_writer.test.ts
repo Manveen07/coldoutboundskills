@@ -1,5 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
-import { writeBridgeSentence } from '../scripts/_bridge_writer';
+import { writeBridgeSentence, BRIDGE_PROMPT_TEMPLATE } from '../scripts/_bridge_writer';
+
+describe('BRIDGE_PROMPT_TEMPLATE content (Fix #2 + #3 prompt rules)', () => {
+  it('contains subject-naming rule (Fix #2 Part A)', () => {
+    expect(BRIDGE_PROMPT_TEMPLATE).toContain('MUST name its subject in the first 4 words');
+  });
+
+  it('contains Scraped-specifics rule (Fix #3)', () => {
+    expect(BRIDGE_PROMPT_TEMPLATE).toContain('Scraped-specifics rule');
+  });
+
+  it('contains Hedge rule (Fix #3)', () => {
+    expect(BRIDGE_PROMPT_TEMPLATE).toContain('Hedge rule:');
+  });
+});
 
 describe('writeBridgeSentence', () => {
   it('returns valid bridge when AI response passes checks', async () => {

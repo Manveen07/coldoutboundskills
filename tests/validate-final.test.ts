@@ -3,6 +3,7 @@ import {
   check11_bannedWords,
   check11b_firstPersonObservation,
   check11c_vagueFact,
+  check11d_bridgeNamesSubject,
   check12_capitalization,
   check13_freshness,
   check14_universalTruth,
@@ -62,6 +63,31 @@ describe('Check 11c - vague fact', () => {
 
   it('passes empty signal_fact', () => {
     expect(check11c_vagueFact({ signal_fact: '' }).pass).toBe(true);
+  });
+});
+
+describe('Check 11d - bridge names subject in first 4 words', () => {
+  it('passes when bridge starts with a noun cohort phrase', () => {
+    const row = { person_id: 'p1', signal_bridge: 'Post-funding swimwear brands typically expand their direct mail.' };
+    expect(check11d_bridgeNamesSubject(row).pass).toBe(true);
+  });
+
+  it('fails when bridge opens with article + abstract noun (no noun in first 4)', () => {
+    const row = { person_id: 'p2', signal_bridge: 'The consideration window gets longer as the destination gets further.' };
+    const result = check11d_bridgeNamesSubject(row);
+    expect(result.pass).toBe(false);
+    expect(result.reason).toMatch(/11d/);
+    expect(result.reason).toMatch(/The consideration window gets/);
+  });
+
+  it('skips empty signal_bridge (no issue raised)', () => {
+    const row = { person_id: 'p3', signal_bridge: '' };
+    expect(check11d_bridgeNamesSubject(row).pass).toBe(true);
+  });
+
+  it('passes when bridge starts with lowercase NOUN_SEEDS word', () => {
+    const row = { person_id: 'p4', signal_bridge: 'brands at Series A often benchmark channel mix early.' };
+    expect(check11d_bridgeNamesSubject(row).pass).toBe(true);
   });
 });
 
