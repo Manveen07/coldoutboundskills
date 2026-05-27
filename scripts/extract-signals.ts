@@ -207,3 +207,70 @@ export async function extractSignalsForLead(
     skipped_ineligible: false,
   };
 }
+
+async function runCli() {
+  const inputCsv = process.argv[2];
+  const outputCsv = process.argv[3];
+  if (!inputCsv || !outputCsv) {
+    console.error('Usage: tsx scripts/extract-signals.ts <leads-all-with-qual.csv> <leads-with-signals.csv>');
+    process.exit(1);
+  }
+
+  const { readFileSync, writeFileSync } = await import('fs');
+  const text = readFileSync(inputCsv, 'utf8').replace(/\r\n/g, '\n');
+  const lines = text.split('\n').filter(Boolean);
+  const headers = lines[0].split(',');
+  const rows = lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => obj[h] = vals[i] ?? '');
+    return obj;
+  });
+
+  const qualified = rows.filter(r => r.qualified === 'true');
+  console.error(`Processing ${qualified.length} qualified leads`);
+
+  const serperKey = process.env.SERPER_API_KEY;
+  if (!serperKey) {
+    console.error('ERROR: SERPER_API_KEY not set in .env');
+    process.exit(1);
+  }
+
+  const results: Record<string, string>[] = [];
+  for (const lead of qualified) {
+    try {
+      const result = await extractSignalsForLead({
+        person_id: lead.person_id,
+        qual_confidence: parseFloat(lead.qual_confidence),
+        title: lead.current_job_title,
+        company_name: lead.company_name,
+        company_domain: lead.company_domain,
+      }, serperKey);
+
+      results.push({
+        ...lead,
+        enrichment_tier: result.enrichment_tier,
+        fired_queries: String(result.fired_queries),
+        cache_hit: String(result.cache_hit),
+        skipped_ineligible: String(result.skipped_ineligible),
+      });
+      console.error(`  ${lead.company_name}: tier=${result.enrichment_tier} fired=${result.fired_queries} hit=${result.cache_hit}`);
+    } catch (err) {
+      console.error(`  ${lead.company_name}: ERROR ${err}`);
+      results.push({ ...lead, enrichment_tier: 'ERROR', fired_queries: '0', cache_hit: 'false', skipped_ineligible: 'false' });
+    }
+  }
+
+  const outHeaders = [...headers, 'enrichment_tier', 'fired_queries', 'cache_hit', 'skipped_ineligible'];
+  const outLines = [outHeaders.join(',')];
+  for (const r of results) {
+    outLines.push(outHeaders.map(h => r[h] ?? '').join(','));
+  }
+  writeFileSync(outputCsv, outLines.join('\n'));
+  console.error(`Wrote ${results.length} rows to ${outputCsv}`);
+}
+
+import { pathToFileURL } from 'url';
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runCli().catch(e => { console.error(e); process.exit(1); });
+}

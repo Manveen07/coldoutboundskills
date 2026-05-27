@@ -293,3 +293,80 @@ export async function renderLead(
     email4_body,
   };
 }
+
+async function runCli() {
+  const inputCsv = process.argv[2];
+  const outputCsv = process.argv[3];
+  if (!inputCsv || !outputCsv) {
+    console.error('Usage: tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv>');
+    process.exit(1);
+  }
+
+  const { readFileSync, writeFileSync } = await import('fs');
+  const text = readFileSync(inputCsv, 'utf8').replace(/\r\n/g, '\n');
+  const lines = text.split('\n').filter(Boolean);
+  const headers = lines[0].split(',');
+  const rows = lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => obj[h] = vals[i] ?? '');
+    return obj;
+  });
+
+  // AI invoker — placeholder. Task 17 wires OpenRouter.
+  const aiInvoke = async (prompt: string): Promise<string> => {
+    console.error('AI subagent invocation pending Task 17 (OpenRouter). Returning placeholder.');
+    return 'Brands at that stage typically start asking the channel-mix question.';
+  };
+
+  const { StatRotator } = await import('./_stat_rotator');
+  const rotator = new StatRotator();
+
+  const rendered: Record<string, any>[] = [];
+  for (const lead of rows) {
+    try {
+      const r = await renderLead({
+        person_id: lead.person_id,
+        first_name: lead.first_name,
+        full_name: lead.full_name,
+        current_job_title: lead.current_job_title,
+        company_name: lead.company_name,
+        company_domain: lead.company_domain,
+        qual_confidence: parseFloat(lead.qual_confidence),
+        primary_vertical: lead.primary_vertical,
+        assigned_variant: lead.assigned_variant as 'B' | 'C',
+        vertical_anchor: lead.vertical_anchor,
+        ai_similarity_dimension: lead.ai_similarity_dimension,
+        ai_brand_category: lead.ai_brand_category,
+        ai_role_hook: lead.ai_role_hook,
+      }, aiInvoke, 'data/signals', rotator);
+
+      rendered.push({ ...lead, ...r });
+    } catch (err) {
+      console.error(`Render error for ${lead.person_id}: ${err}`);
+    }
+  }
+
+  const outHeaders = [
+    ...headers,
+    'enrichment_tier', 'signal_used', 'signal_fact', 'signal_bridge',
+    'signal_freshness_days', 'signal_e2_back_reference',
+    'email1_subject', 'email1_body', 'email2_subject', 'email2_body',
+    'email3_subject', 'email3_body', 'email4_subject', 'email4_body',
+  ];
+  const outLines = [outHeaders.join(',')];
+  for (const r of rendered) {
+    outLines.push(outHeaders.map(h => {
+      const v = r[h] ?? '';
+      const s = String(v);
+      return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
+    }).join(','));
+  }
+  writeFileSync(outputCsv, outLines.join('\n'));
+  console.error(`Wrote ${rendered.length} rendered leads to ${outputCsv}`);
+}
+
+import { pathToFileURL } from 'url';
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runCli().catch(e => { console.error(e); process.exit(1); });
+}
