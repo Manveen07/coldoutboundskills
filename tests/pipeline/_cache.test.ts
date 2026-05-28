@@ -86,3 +86,21 @@ describe('clearCacheDomain', () => {
     expect(readCache(TEST_DIR, 'other.com--funding')).toEqual({ x: 3 });
   });
 });
+
+describe('path traversal protection', () => {
+  it('rejects keys containing ..', () => {
+    expect(() => writeCache(TEST_DIR, '../escape', { x: 1 })).toThrow(/invalid cache key/i);
+  });
+
+  it('rejects keys containing slash', () => {
+    expect(() => writeCache(TEST_DIR, 'foo/bar', { x: 1 })).toThrow(/invalid cache key/i);
+  });
+
+  it('rejects keys containing backslash', () => {
+    expect(() => writeCache(TEST_DIR, 'foo\\bar', { x: 1 })).toThrow(/invalid cache key/i);
+  });
+
+  it('rejects empty keys', () => {
+    expect(() => writeCache(TEST_DIR, '', { x: 1 })).toThrow(/invalid cache key/i);
+  });
+});
