@@ -1,0 +1,19 @@
+# Hard caps applied to every pipeline run. If exceeded, run aborts immediately.
+hard_caps:
+  serper_per_run: 1000
+  prospeo_per_run: 50
+  leadmagic_per_run: 500
+
+# Default parallel batch size for sub-agent dispatches. Per-stage override possible.
+batch_size_default: 10
+
+# Stage 5b semantic validator pass threshold (1-10).
+semantic_pass_threshold: 7
+
+# Stage 3 research tier cutoffs based on icp_confidence from Stage 2.
+tier_thresholds:
+  t2_qual_confidence: 0.8
+  t3_qual_confidence: 0.9
+
+# Stage 4 writer parallel batch size (smaller due to large prompt context per call).
+write_batch_size: 5
