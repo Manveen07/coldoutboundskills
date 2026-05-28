@@ -149,6 +149,13 @@ export async function runPipeline(args: PipelineArgs, dispatch: (prompt: string)
 
   // --- Stage 1: pull ---
   console.log('\n[Stage 1] Lead pull...');
+  // In dry-run we don't actually pull; just report what would happen.
+  if (args.dryRun) {
+    console.log('  [dry-run] skipping Prospeo pull');
+    console.log('\n[dry-run] orchestrator wiring verified. Use real run to test API calls.');
+    appendLog(runDir, 'dry-run complete');
+    return;
+  }
   const pull = await pullLeads({
     apiKey: prospeoKey ?? '',
     cfg, category: args.category,
