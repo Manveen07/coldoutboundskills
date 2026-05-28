@@ -4,6 +4,8 @@ import type { ScoredLead } from './_score';
 import { serperSearch } from '../_serper_client';
 import { fetchWithCache, hashKey } from './_cache';
 import { scrapeCompany, type ScrapeResult } from './_scrape';
+import { webResearch, gapsToSerperQueryTypes, type WebResearchDossier } from './_web_research';
+import type { SubagentDispatcher } from './_subagent_runner';
 import {
   extractFundingFact,
   extractPressFact,
@@ -92,6 +94,7 @@ export interface ResearchOptions {
   thresholds: { t2: number; t3: number };
   serperCacheDir?: string;
   callerScript?: string;
+  dispatch?: SubagentDispatcher;  // if provided, free web research runs first
 }
 
 export async function researchLead(opts: ResearchOptions): Promise<ResearchDossier> {
@@ -101,18 +104,32 @@ export async function researchLead(opts: ResearchOptions): Promise<ResearchDossi
   const serperCacheDir = opts.serperCacheDir ?? resolve(process.cwd(), 'data/research-cache/serper');
   const caller = opts.callerScript ?? 'pipeline/_research.ts';
 
+  // --- Step 1 (free): web research via sub-agent if dispatcher provided ---
+  let webDossier: WebResearchDossier | null = null;
+  if (opts.dispatch) {
+    try {
+      webDossier = await webResearch({ lead, dispatch: opts.dispatch });
+    } catch (err: any) {
+      console.warn(`[research] web research failed for ${domain}: ${err?.message ?? err}`);
+    }
+  }
+
+  const signals = {
+    funding_fact: webDossier?.funding_fact ?? null,
+    press_facts: webDossier?.press_facts ?? [],
+    acquisition_fact: null as string | null,
+    category_snippet: webDossier?.category_observation ?? null,
+  };
+
+  // --- Step 2 (Serper): only fire queries for gaps ---
   // Map research tier to query depth: T3=T1 queries (most), T2=T2, T1=T3 (least)
   const queryTier = tier === 'T3' ? 'T1' : tier === 'T2' ? 'T2' : 'T3';
   const queries = getMythicQueriesForTier(queryTier, { company: lead.company_name, domain });
-
-  const signals = {
-    funding_fact: null as string | null,
-    press_facts: [] as string[],
-    acquisition_fact: null as string | null,
-    category_snippet: null as string | null,
-  };
+  const gapTypes = webDossier ? gapsToSerperQueryTypes(webDossier.gaps) : new Set(['funding', 'press', 'snippet']);
 
   for (const q of queries.serper) {
+    // Skip Serper queries for signal types already filled by web research
+    if (webDossier && !gapTypes.has(q.signal_type as string)) continue;
     const cacheKey = hashKey(domain, q.query);
     try {
       const cached = await fetchWithCache(serperCacheDir, cacheKey, 90, async () => {
