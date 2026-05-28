@@ -1,0 +1,26 @@
+{
+  "pagination": { "total_count": 1, "total_page": 1 },
+  "results": [
+    {
+      "person": {
+        "person_id": "p1",
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "full_name": "Jane Doe",
+        "current_job_title": "Chief Marketing Officer",
+        "linkedin_url": "https://linkedin.com/in/janedoe",
+        "location": { "city": "New York", "state": "NY", "country": "United States" },
+        "email": "jane@acme.com"
+      },
+      "company": {
+        "name": "Acme",
+        "domain": "acme.com",
+        "industry": "Restaurants",
+        "headcount": 500,
+        "headcount_range": "201-500",
+        "linkedin_url": "https://linkedin.com/company/acme",
+        "location": { "city": "New York", "state": "NY", "country": "United States" }
+      }
+    }
+  ]
+}
