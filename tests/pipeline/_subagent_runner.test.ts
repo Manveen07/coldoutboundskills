@@ -53,4 +53,27 @@ describe('runSubagentBatch', () => {
     expect(results[0].success).toBe(false);
     expect(results[0].error).toContain('permanent');
   });
+
+  it('throws when batchSize <= 0', async () => {
+    const dispatch = async () => '{}';
+    await expect(runSubagentBatch(['p'], dispatch, { batchSize: 0 })).rejects.toThrow(/batchSize/);
+  });
+
+  it('throws when maxRetries <= 0', async () => {
+    const dispatch = async () => '{}';
+    await expect(runSubagentBatch(['p'], dispatch, { maxRetries: 0 })).rejects.toThrow(/maxRetries/);
+  });
+
+  it('times out a hung dispatch', async () => {
+    const dispatch = () => new Promise<string>(() => {}); // never resolves
+    const results = await runSubagentBatch(['p'], dispatch, { batchSize: 1, maxRetries: 1, timeoutMs: 50 });
+    expect(results[0].success).toBe(false);
+    expect(results[0].error).toMatch(/timeout/i);
+  });
+
+  it('returns correct retries count when all attempts fail', async () => {
+    const dispatch = async () => { throw new Error('fail'); };
+    const results = await runSubagentBatch(['p'], dispatch, { batchSize: 1, maxRetries: 3 });
+    expect(results[0].retries).toBe(2); // 0-indexed: tried attempt 0, 1, 2
+  });
 });
