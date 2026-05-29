@@ -22,3 +22,19 @@ campaign-plan-*.md
 
 # Signal layer extracted data
 data/signals/
+
+# Large run artifacts and caches
+/data/runs/
+/data/research-cache/
+/data/smoke/
+/data/bridge-prompts-*/
+/data/Home*.csv
+/data/mythic-qsr-scores*.json
+/data/exclusion-list.csv
+
+# Temp sub-agent prompt scratch files
+.tmp-*.txt
+
+# Generated outputs
+bw_home_sequences.json
+package-lock.json

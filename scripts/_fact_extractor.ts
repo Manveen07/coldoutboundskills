@@ -6,7 +6,7 @@ export interface ExtractedFact {
 }
 
 const FUNDING_PATTERNS = /\b(series [a-d]|seed|raised|funding round|secures|investment|million in funding|\$[\d.]+m|\$[\d.]+ million)\b/i;
-const PRESS_PATTERNS = /\b(announces|announced|press release|opening|launches|debuts|partnership)\b/i;
+const PRESS_PATTERNS = /\b(announces|announced|press release|opening|launches|debuts|partnership|expands|expansion|opens|new location|new restaurant|new market|new cmo|new vp|hires|appointed|names)\b/i;
 const LAUNCH_PATTERNS = /\b(launches|launched|debuts|debut|introduces|new collection|new line|new product)\b/i;
 const ACQUISITION_PATTERNS = /\b(acquires|acquired|acquisition|to acquire|buys|bought)\b/i;
 
@@ -51,11 +51,8 @@ export function extractFundingFact(raw: any, company: string): ExtractedFact | n
   for (const item of orgs) {
     const text = `${item.title || ''} ${item.snippet || ''}`;
     if (FUNDING_PATTERNS.test(text)) {
-      // Skip negative funding statements so they don't poison the extraction.
-      // Stay in the loop so a subsequent organic result can still match.
-      if (NEGATION_PATTERNS.some((p) => p.test(text))) {
-        continue;
-      }
+      if (NEGATION_PATTERNS.some((p) => p.test(text))) continue;
+      if (!isFromTrustedDomain(item, TRUSTED_FUNDING_DOMAINS)) continue;
       const raw_fact = item.snippet?.trim() || item.title?.trim() || '';
       const fact = cleanFact(raw_fact);
       if (fact === null) continue;
@@ -74,6 +71,7 @@ export function extractPressFact(raw: any, company: string): ExtractedFact | nul
   for (const item of orgs) {
     const text = `${item.title || ''} ${item.snippet || ''}`;
     if (PRESS_PATTERNS.test(text)) {
+      if (!isFromTrustedDomain(item, TRUSTED_PRESS_DOMAINS)) continue;
       const raw_fact = item.snippet?.trim() || item.title?.trim() || '';
       const fact = cleanFact(raw_fact);
       if (fact === null) continue;
@@ -121,6 +119,53 @@ export function extractAcquisitionFact(raw: any, company: string): ExtractedFact
     }
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Trusted source allowlist — funding and press facts must come from these domains.
+// Snippet facts (S1 queries) are exempt — they pull from any source.
+// Add domains here to trust a new publisher for funding/press signals.
+// ---------------------------------------------------------------------------
+const TRUSTED_FUNDING_DOMAINS = new Set([
+  'techcrunch.com', 'crunchbase.com', 'businesswire.com', 'prnewswire.com',
+  'globenewswire.com', 'sec.gov', 'wsj.com', 'bloomberg.com', 'reuters.com',
+  'axios.com', 'forbes.com', 'fortune.com', 'ft.com', 'cnbc.com',
+  'venturebeat.com', 'pymnts.com', 'restaurantbusinessonline.com',
+  'qsrmagazine.com', 'nrn.com', 'foodandwine.com',
+  'pitchbook.com', 'bizjournals.com', 'inc.com', 'fastcompany.com',
+  'franchisetimes.com', 'restaurantdive.com', 'fooddive.com',
+  'yahoo.com', 'msn.com', 'apnews.com', 'nytimes.com', 'washingtonpost.com',
+  'usatoday.com', 'nationsprestaurantnews.com', 'foodbev.com',
+]);
+
+const TRUSTED_PRESS_DOMAINS = new Set([
+  ...TRUSTED_FUNDING_DOMAINS,
+  'prnewswire.com', 'businesswire.com', 'globenewswire.com',
+  'marketwatch.com', 'adweek.com', 'mediapost.com', 'marketingweek.com',
+  'restaurantbusinessonline.com', 'qsrmagazine.com', 'nrn.com',
+  'foodandwine.com', 'eater.com', 'nation.com',
+  'restaurantdive.com', 'fooddive.com', 'franchisetimes.com',
+  'bizjournals.com', 'inc.com', 'fastcompany.com', 'pitchbook.com',
+  'yahoo.com', 'msn.com', 'apnews.com', 'nytimes.com', 'washingtonpost.com',
+  'usatoday.com', 'nationsnrestaurantnews.com',
+]);
+
+function domainFromLink(link: string | undefined): string {
+  if (!link) return '';
+  try { return new URL(link).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
+function isFromTrustedDomain(item: any, allowlist: Set<string>): boolean {
+  const domain = domainFromLink(item.link);
+  if (!domain) return false; // no link = skip (can't verify source)
+  // Also accept subdomains: finance.yahoo.com matches yahoo.com
+  if (allowlist.has(domain)) return true;
+  const parts = domain.split('.');
+  if (parts.length > 2) {
+    const apex = parts.slice(-2).join('.');
+    if (allowlist.has(apex)) return true;
+  }
+  return false;
 }
 
 const SNIPPET_STOPWORD_STARTS = [

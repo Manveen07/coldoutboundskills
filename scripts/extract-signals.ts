@@ -81,14 +81,16 @@ export async function extractSignalsForLead(
   let firedQueries = 0;
   for (const q of queries.serper) {
     try {
-      const result = await serperSearch(q.query, serperKey);
+      const result = await serperSearch(q.query, serperKey, 'extract-signals.ts');
       firedQueries++;
       sidecar.fetch_log!.push({
+        query_id: q.id,
         query: q.query,
         signal_type: q.signal_type,
-        timestamp: result.timestamp,
+        fired_at: result.timestamp,
         status: result.status,
         result_count: result.raw?.organic?.length ?? 0,
+        raw_response: result.raw,  // stored for cache replay -- avoids re-fetching on extractor bugs
       });
 
       if (q.signal_type === 'funding') {
@@ -211,8 +213,9 @@ export async function extractSignalsForLead(
 async function runCli() {
   const inputCsv = process.argv[2];
   const outputCsv = process.argv[3];
+  const signalsDir = process.argv[4] || 'data/signals';
   if (!inputCsv || !outputCsv) {
-    console.error('Usage: tsx scripts/extract-signals.ts <leads-all-with-qual.csv> <leads-with-signals.csv>');
+    console.error('Usage: tsx scripts/extract-signals.ts <leads-all-with-qual.csv> <leads-with-signals.csv> [signals-dir]');
     process.exit(1);
   }
 
@@ -239,7 +242,7 @@ async function runCli() {
         title: lead.current_job_title,
         company_name: lead.company_name,
         company_domain: lead.company_domain,
-      }, serperKey);
+      }, serperKey, signalsDir);
 
       results.push({
         ...lead,

@@ -331,8 +331,9 @@ async function runCli() {
   const inputCsv = process.argv[2];
   const outputCsv = process.argv[3];
   const responsesDir = process.argv[4];
+  const signalsDirArg = process.argv[5] || 'data/signals';
   if (!inputCsv || !outputCsv) {
-    console.error('Usage: tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv> <responses-dir>');
+    console.error('Usage: tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv> <responses-dir> [signals-dir]');
     process.exit(1);
   }
   if (!responsesDir) {
@@ -342,7 +343,7 @@ Workflow:
   1. npx tsx scripts/extract-signals.ts <input> <leads-with-signals.csv>
   2. npx tsx scripts/prepare-bridge-prompts.ts <leads-with-signals.csv> <bridge-tasks.json>
   3. (In Claude Code chat) dispatch Task subagents to populate <responses-dir>
-  4. npx tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv> <responses-dir>`);
+  4. npx tsx scripts/render-with-signals.ts <leads-with-signals.csv> <leads-final-v5.csv> <responses-dir> [signals-dir]`);
     process.exit(1);
   }
 
@@ -374,7 +375,7 @@ Workflow:
         ai_similarity_dimension: lead.ai_similarity_dimension,
         ai_brand_category: lead.ai_brand_category,
         ai_role_hook: lead.ai_role_hook,
-      }, aiInvoke, 'data/signals', rotator);
+      }, aiInvoke, signalsDirArg, rotator);
 
       rendered.push({ ...lead, ...r });
     } catch (err) {

@@ -14,6 +14,7 @@ describe('extractFundingFact', () => {
         title: 'Test Co raises $18M Series B',
         snippet: 'Test Co announced an $18M Series B round led by Sequoia in March 2026.',
         date: '2026-03-15',
+        link: 'https://techcrunch.com/story',
       }],
     };
     const fact = extractFundingFact(raw, 'Test Co');
@@ -24,7 +25,7 @@ describe('extractFundingFact', () => {
   });
 
   it('returns null when no funding-relevant results', () => {
-    const raw = { organic: [{ title: 'Test Co careers page', snippet: 'Jobs at Test Co', date: '2024-01-01' }] };
+    const raw = { organic: [{ title: 'Test Co careers page', snippet: 'Jobs at Test Co', date: '2024-01-01', link: 'https://somerandomblog.com/story' }] };
     const fact = extractFundingFact(raw, 'Test Co');
     expect(fact).toBeNull();
   });
@@ -50,6 +51,7 @@ describe('extractFundingFact', () => {
         title: 'Acme funding',
         snippet: 'Acme raised $18M Series B in March 2026 led by Sequoia.',
         date: '2026-03-15',
+        link: 'https://techcrunch.com/story',
       }],
     };
     const fact = extractFundingFact(raw, 'Acme');
@@ -112,6 +114,7 @@ describe('extractPressFact', () => {
         title: 'Acme Corp announces new partnership with Globex',
         snippet: 'Acme Corp announced a strategic partnership with Globex on April 10, 2026.',
         date: '2026-04-10',
+        link: 'https://techcrunch.com/story',
       }],
     };
     const fact = extractPressFact(raw, 'Acme Corp');
@@ -174,6 +177,7 @@ describe('Fix #1 Rule 1 — first-sentence truncation', () => {
       organic: [{
         snippet: 'Frankies Bikinis raised $18M in funding. The company has 95 active competitors. Its top competitors are funded brands.',
         date: '2026-01-01',
+        link: 'https://techcrunch.com/story',
       }],
     };
     const fact = extractFundingFact(raw, 'Frankies Bikinis');
@@ -201,9 +205,9 @@ describe('Fix #1 Rule 2 — pronoun-residue rejection', () => {
   it('funding: item with "Its top" first sentence is skipped; third organic item returned', () => {
     const raw = {
       organic: [
-        { snippet: 'Its top competitors raised $8M. Acme raised $5M in seed.' },
-        { snippet: 'Their latest round closed at $10M in series B.' },
-        { snippet: 'Acme secured $12M in series C investment.' },
+        { snippet: 'Its top competitors raised $8M. Acme raised $5M in seed.', link: 'https://somerandomblog.com/story' },
+        { snippet: 'Their latest round closed at $10M in series B.', link: 'https://somerandomblog.com/story' },
+        { snippet: 'Acme secured $12M in series C investment.', link: 'https://techcrunch.com/story' },
       ],
     };
     const fact = extractFundingFact(raw, 'Acme');
@@ -214,8 +218,8 @@ describe('Fix #1 Rule 2 — pronoun-residue rejection', () => {
   it('funding: "The company" pronoun-led first sentence skipped', () => {
     const raw = {
       organic: [
-        { snippet: 'The company raised $3M in seed funding. Founded in 2020.' },
-        { snippet: 'BrandX raised $3M in a seed round.' },
+        { snippet: 'The company raised $3M in seed funding. Founded in 2020.', link: 'https://somerandomblog.com/story' },
+        { snippet: 'BrandX raised $3M in a seed round.', link: 'https://techcrunch.com/story' },
       ],
     };
     const fact = extractFundingFact(raw, 'BrandX');
@@ -244,7 +248,7 @@ describe('Fix #1 Rule 2 — pronoun-residue rejection', () => {
 describe('Fix #1 Rule 3 — ellipsis strip', () => {
   it('funding: trailing "..." stripped', () => {
     const raw = {
-      organic: [{ snippet: 'Acme raised $7M in series A...' }],
+      organic: [{ snippet: 'Acme raised $7M in series A...', link: 'https://techcrunch.com/story' }],
     };
     const fact = extractFundingFact(raw, 'Acme');
     expect(fact).not.toBeNull();
@@ -253,7 +257,7 @@ describe('Fix #1 Rule 3 — ellipsis strip', () => {
 
   it('funding: trailing unicode ellipsis stripped', () => {
     const raw = {
-      organic: [{ snippet: 'Acme raised $7M in series A…' }],
+      organic: [{ snippet: 'Acme raised $7M in series A…', link: 'https://techcrunch.com/story' }],
     };
     const fact = extractFundingFact(raw, 'Acme');
     expect(fact).not.toBeNull();
@@ -262,7 +266,7 @@ describe('Fix #1 Rule 3 — ellipsis strip', () => {
 
   it('funding: single trailing period preserved', () => {
     const raw = {
-      organic: [{ snippet: 'Acme raised $7M in series A.' }],
+      organic: [{ snippet: 'Acme raised $7M in series A.', link: 'https://techcrunch.com/story' }],
     };
     const fact = extractFundingFact(raw, 'Acme');
     expect(fact).not.toBeNull();

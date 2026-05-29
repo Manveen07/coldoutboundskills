@@ -93,13 +93,35 @@ function quoteCell(value: any): string {
  * Output does NOT include a trailing newline so callers can write directly
  * via fs.writeFileSync.
  */
+/**
+ * Write rows to CSV string.
+ * headers: explicit column list. If omitted, infers from all row keys (union).
+ * Extra columns in rows not in headers are silently dropped.
+ * Columns in headers not in a row get empty string.
+ */
 export function writeCsv(
   rows: Record<string, any>[],
-  headers: string[]
+  headers?: string[]
 ): string {
-  const lines: string[] = [headers.map(quoteCell).join(',')];
+  if (rows.length === 0) return headers ? headers.join(',') : '';
+  const cols = headers ?? Object.keys(rows[0]);
+  const lines: string[] = [cols.map(quoteCell).join(',')];
   for (const r of rows) {
-    lines.push(headers.map((h) => quoteCell(r[h] ?? '')).join(','));
+    lines.push(cols.map((h) => quoteCell(r[h] ?? '')).join(','));
   }
   return lines.join('\n');
+}
+
+/**
+ * Write rows preserving all original columns plus any extra columns appended at end.
+ * Use this instead of writeCsv when adding enrichment columns to existing rows.
+ */
+export function writeCsvWithExtra(
+  rows: Record<string, any>[],
+  extraCols: string[]
+): string {
+  if (rows.length === 0) return '';
+  const baseHeaders = Object.keys(rows[0]);
+  const allHeaders = [...baseHeaders, ...extraCols.filter(c => !baseHeaders.includes(c))];
+  return writeCsv(rows, allHeaders);
 }

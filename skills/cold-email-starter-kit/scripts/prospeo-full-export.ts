@@ -6,6 +6,7 @@
 // Output: leads.csv
 
 import { env, required, parseArgs, writeCsv, sleep, retry, multiFlag, confirm } from "./_lib.ts";
+import { prospeoSearchPage } from '../../../scripts/_prospeo_client';
 
 const US_STATES = [
   "California", "Texas", "Florida", "New York", "Illinois", "Pennsylvania",
@@ -16,13 +17,7 @@ const US_STATES = [
 ];
 
 async function searchPage(filters: any, page: number, apiKey: string): Promise<any> {
-  const res = await retry(() => fetch("https://api.prospeo.io/search-person", {
-    method: "POST",
-    headers: { "X-KEY": apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ page, filters }),
-  }));
-  if (!res.ok) throw new Error(`Prospeo ${res.status}: ${await res.text()}`);
-  return await res.json();
+  return prospeoSearchPage(filters, page, apiKey, 'prospeo-full-export.ts');
 }
 
 function mapResult(r: any): Record<string, string> {

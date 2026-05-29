@@ -20,7 +20,7 @@ describe('extractSignalsForLead', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: () => Promise.resolve({ organic: [{ title: 'X raises $5M', snippet: 'X raised $5M Series A in February 2026.', date: '2026-02-15' }] }),
+      json: () => Promise.resolve({ organic: [{ title: 'X raises $5M', snippet: 'X raised $5M Series A in February 2026.', date: '2026-02-15', link: 'https://techcrunch.com/story' }] }),
     } as any);
 
     const lead = {
@@ -91,17 +91,17 @@ describe('extractSignalsForLead', () => {
     let callIdx = 0;
     const responses = [
       // F1 funding
-      { organic: [{ title: 'Y raises $10M', snippet: 'Y raised $10M Series B in Jan 2026.', date: '2026-01-15' }] },
+      { organic: [{ title: 'Y raises $10M', snippet: 'Y raised $10M Series B in Jan 2026.', date: '2026-01-15', link: 'https://techcrunch.com/story' }] },
       // F2 funding (T1) — second funding query, will not overwrite first
-      { organic: [{ title: 'Y series B', snippet: 'Y Series B led by Acme', date: '2026-01-15' }] },
+      { organic: [{ title: 'Y series B', snippet: 'Y Series B led by Acme', date: '2026-01-15', link: 'https://techcrunch.com/story' }] },
       // P1 press
-      { organic: [{ title: 'Y opens store', snippet: 'Y announces new store in March 2026.', date: '2026-03-01' }] },
+      { organic: [{ title: 'Y opens store', snippet: 'Y announces new store in March 2026.', date: '2026-03-01', link: 'https://techcrunch.com/story' }] },
       // P2 press
-      { organic: [{ title: 'Y press', snippet: 'Y announces partnership.', date: '2026-02-01' }] },
+      { organic: [{ title: 'Y press', snippet: 'Y announces partnership.', date: '2026-02-01', link: 'https://techcrunch.com/story' }] },
       // L1 launch
-      { organic: [{ title: 'Y launches', snippet: 'Y launches new product line.', date: '2026-03-15' }] },
+      { organic: [{ title: 'Y launches', snippet: 'Y launches new product line.', date: '2026-03-15', link: 'https://techcrunch.com/story' }] },
       // L2 launch
-      { organic: [{ title: 'Y debuts', snippet: 'Y debuts new collection.', date: '2026-03-20' }] },
+      { organic: [{ title: 'Y debuts', snippet: 'Y debuts new collection.', date: '2026-03-20', link: 'https://techcrunch.com/story' }] },
       // S1 snippet
       { organic: [{ title: 'Y home page', snippet: 'Y is a DTC brand with 30 stores.' }] },
     ];

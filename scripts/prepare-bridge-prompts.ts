@@ -132,7 +132,8 @@ async function runCli() {
     aiInvoke = makeFileBasedInvoker(responsesDir);
   }
 
-  const tasks = await generateBridgeTasks(rows, 'data/signals', responsesDir, aiInvoke);
+  const sidecarDir = process.argv[5] || 'data/signals';
+  const tasks = await generateBridgeTasks(rows, sidecarDir, responsesDir, aiInvoke);
 
   const out: BridgeTasksFile = {
     schema_version: '1.0',

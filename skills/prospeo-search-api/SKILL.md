@@ -121,6 +121,12 @@ interface ProspeoSearchFilters {
   company_domain?: { include?: string[]; exclude?: string[] };
   company_revenue_custom?: { min?: number; max?: number };
   company_founding_year?: { min?: number; max?: number };
+
+  // Duplicate suppression — hide leads already in your Prospeo lists or exported before
+  person_duplicate_control?: {
+    hide_people_from_all_my_lists?: boolean;
+    hide_people_already_exported_before?: boolean;
+  };
 }
 ```
 
@@ -147,7 +153,16 @@ interface ProspeoSearchResult {
     full_name?: string;
     current_job_title?: string;
     linkedin_url?: string;
-    email?: string;
+    // email is a nested object, NOT a flat string. Always use extractEmail() helper.
+    email?: string | {
+      value?: string;
+      email?: string;
+      address?: string;
+      status?: string;
+      email_status?: string;
+      verified?: string;
+      revealed?: boolean;
+    } | Array<any>;
     email_status?: string;
     phone?: string;
     location?: {
@@ -170,6 +185,8 @@ interface ProspeoSearchResult {
     headcount?: number;
     headcount_range?: string;
     technologies?: string[];
+    description?: string;
+    description_ai?: string;
     location?: { city?: string; state?: string; country?: string };
   };
 }

@@ -42,6 +42,26 @@ const L1 = launch('L1', '{company} launches new collection 2026');
 const L2 = launch('L2', '{company} new product launch 2025 2026');
 const S1 = snippet('S1', '{company} {domain} ecommerce stores retail');
 
+// ---------------------------------------------------------------------------
+// Mythic-specific query set — brand and media signals for Growth Codes audit
+// Replaces S1 (ecommerce-focused) with brand/media/franchise signals
+// ---------------------------------------------------------------------------
+const M1 = snippet('M1', '{company} new campaign brand advertising 2025 2026');
+const M2 = snippet('M2', '{company} franchise locations expansion 2025 2026');
+const M3 = snippet('M3', '{company} marketing leadership CMO VP marketing 2025 2026');
+const M4 = snippet('M4', '{company} media spend advertising budget 2025 2026');
+
+export function getMythicQueriesForTier(tier: EnrichmentTier, ctx: QueryContext): QueryBatch {
+  switch (tier) {
+    case 'T1':
+      return { serper: [F1(ctx), F2(ctx), P1(ctx), P2(ctx), M1(ctx), M2(ctx), M3(ctx), M4(ctx)], pnd: true };
+    case 'T2':
+      return { serper: [F1(ctx), P1(ctx), M1(ctx), M2(ctx), M3(ctx)], pnd: true };
+    case 'T3':
+      return { serper: [F1(ctx), P1(ctx), M1(ctx)], pnd: false };
+  }
+}
+
 export function getQueriesForTier(tier: EnrichmentTier, ctx: QueryContext): QueryBatch {
   switch (tier) {
     case 'T1':

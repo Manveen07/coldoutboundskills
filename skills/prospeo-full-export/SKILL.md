@@ -263,6 +263,16 @@ interface ProspeoFilters {
   company_name?: { include?: string[]; exclude?: string[] };
   company_domain?: { include?: string[]; exclude?: string[] };
   person_contact_details?: { email?: string[]; mobile?: string[]; operator?: string };
+  company_funding?: {
+    funding_date?: 90 | 180 | 270 | 365 | null;
+    last_funding?: { min?: string; max?: string } | null;
+    total_funding?: { min?: string; max?: string };
+    stage?: string[];
+  };
+  person_duplicate_control?: {
+    hide_people_from_all_my_lists?: boolean;
+    hide_people_already_exported_before?: boolean;
+  };
 }
 
 // --- Rate-limited fetch ---
