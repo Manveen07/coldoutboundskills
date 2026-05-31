@@ -31,6 +31,7 @@ data/signals/
 /data/Home*.csv
 /data/mythic-qsr-scores*.json
 /data/exclusion-list.csv
+/data/list-builder/
 
 # Temp sub-agent prompt scratch files
 .tmp-*.txt
