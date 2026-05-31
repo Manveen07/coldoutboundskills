@@ -116,20 +116,38 @@ Every sentence must pass spoken aloud as a peer-to-peer note. Before finalizing 
 - Replace state abbreviations with full state names in body (AL -> Alabama, MD -> Maryland).
 - Contractions OK in casual register; only use "you are" / "do not" if it reads more naturally than "you're" / "don't" in that line.
 
-ANCHOR-CATEGORY MATCH RULE:
-The anchor brand cited must share category logic with the lead. Map:
-- Mythic restaurant/QSR lead -> use Subway, Meineke (franchise multi-unit consumer)
-- Mythic healthcare lead -> use Cone Health, UnitedHealthcare
-- Mythic financial lead -> use MetLife, Ally
-- Mythic hospitality lead -> use Harley-Davidson, Subway
-- Mythic retail lead -> use Subway, Harley-Davidson
+CATEGORY-BEFORE-ANCHOR RULE (CRITICAL):
+The proof line must establish category fit BEFORE name-dropping. Anchor is third in importance, not the proof-by-default.
+
+Order of preference for the proof sentence:
+1. FIRST try category description without naming an anchor: "Mythic works with multi-unit consumer brands in crowded categories where new menu drops alone don't move share."
+2. THEN add ONE anchor name only if anchor is in SAME category as lead. See map below.
+3. NEVER name-drop an anchor that's category-mismatched. Better to skip anchor entirely and use stat-only.
+
+ANCHOR-CATEGORY MATCH MAP:
+- Mythic restaurant/QSR/food_bev lead -> Subway, Meineke (franchise multi-unit consumer)
+- Mythic healthcare lead -> Cone Health, UnitedHealthcare
+- Mythic financial lead -> MetLife, Ally
+- Mythic hospitality lead -> Harley-Davidson, Subway
+- Mythic retail lead -> Subway, Harley-Davidson
 - BW home/furniture -> Serena & Lily, DWR, Crate & Barrel, McGee & Co, Schoolhouse
 - BW apparel/lifestyle -> Anthropologie, Reformation, STAUD, Vera Bradley
 - BW denim -> AG, Paige
 - BW beauty -> Bombas (lifestyle DTC analogue), Reformation (premium DTC)
 - BW footwear/athletic -> Bombas, Title Nine
-- BW food_bev -> use stat-only ("3-8x ROAS on mail" / "103% LTV mail vs digital") rather than mismatched anchor
-Never mix categories (no Cone Health in a restaurant email).
+- BW food_bev -> stat-only ("3-8x ROAS on mail" / "103% LTV mail vs digital"), no anchor
+
+Hard rule: NEVER mix categories (no Cone Health in a restaurant email, no Harley in healthcare). If lead vertical has no clean anchor match in the map, USE STAT-ONLY proof.
+
+SIGNAL PRIORITY (when fetching the dossier hook):
+1. Person-level signals FIRST: new role / promotion / lead's own post or quote (rarer, more flattering when present)
+2. THEN company-level: acquisition / funding / product launch / press
+3. Falls back to company snippet if no signal in either tier
+Use the highest-priority signal that exists. Person-signal beats company-signal when both are available.
+
+STAT-DECORATION RULE:
+Numbers go in body ONLY when the number IS the proof (e.g., "103% LTV mail vs digital" is the proof line).
+Do NOT pepper body with decoration stats like "$5B+ in revenue" or "20-30% productivity year one" unless the number is the load-bearing claim of the sentence. Read aloud: would a peer say this number? If no, drop it.
 
 REFERENCE STANDARDS (target this quality):
 
