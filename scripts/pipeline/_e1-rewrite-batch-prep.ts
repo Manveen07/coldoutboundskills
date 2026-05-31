@@ -116,13 +116,14 @@ Every sentence must pass spoken aloud as a peer-to-peer note. Before finalizing 
 - Replace state abbreviations with full state names in body (AL -> Alabama, MD -> Maryland).
 - Contractions OK in casual register; only use "you are" / "do not" if it reads more naturally than "you're" / "don't" in that line.
 
-CATEGORY-BEFORE-ANCHOR RULE (CRITICAL):
-The proof line must establish category fit BEFORE name-dropping. Anchor is third in importance, not the proof-by-default.
+PROOF-LINE PRIORITY RULE (CRITICAL):
+Anchor is the strongest proof when it fits the lead's category cleanly. Mismatched anchor breaks trust. Use this order:
 
-Order of preference for the proof sentence:
-1. FIRST try category description without naming an anchor: "Mythic works with multi-unit consumer brands in crowded categories where new menu drops alone don't move share."
-2. THEN add ONE anchor name only if anchor is in SAME category as lead. See map below.
-3. NEVER name-drop an anchor that's category-mismatched. Better to skip anchor entirely and use stat-only.
+1. CLEAN same-category anchor FIRST (best): "Mythic works with chain restaurants like Subway and Meineke on the same multi-unit brand pressure." Use ONE anchor from the map below, only if same category.
+2. Adjacent-category description SECOND (when no clean anchor match exists in map): "Mythic works with multi-unit consumer brands in crowded categories where new menu drops alone don't shift share." No name-drop.
+3. Stat-only THIRD (when even category description feels generic): "Mythic clients in this space typically see X" or BW stat "103% LTV mail vs digital."
+
+Hard rule: NEVER name-drop a category-mismatched anchor (no Cone Health in a restaurant email, no Harley in healthcare). Drop the anchor before forcing a wrong one.
 
 ANCHOR-CATEGORY MATCH MAP:
 - Mythic restaurant/QSR/food_bev lead -> Subway, Meineke (franchise multi-unit consumer)
