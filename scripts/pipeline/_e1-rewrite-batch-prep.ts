@@ -120,7 +120,9 @@ PROOF-LINE PRIORITY RULE (CRITICAL):
 Anchor is the strongest proof when it fits the lead's category cleanly. Mismatched anchor breaks trust. Use this order:
 
 1. CLEAN same-category anchor FIRST (best): "Mythic works with chain restaurants like Subway and Meineke on the same multi-unit brand pressure." Use ONE anchor from the map below, only if same category.
-2. Adjacent-category description SECOND (when no clean anchor match exists in map): "Mythic works with multi-unit consumer brands in crowded categories where new menu drops alone don't shift share." No name-drop.
+2. Adjacent-category description SECOND (when no clean anchor match exists in map): no name-drop, just frame the shared problem the lead is in. Gold-standard example:
+   "Mythic works with multi-unit consumer brands stuck in crowded categories where new menu drops alone don't shift share."
+   Pattern: [agency] works with [lead's category in plain English] [stuck/dealing with/navigating] [the lead's actual problem].
 3. Stat-only THIRD (when even category description feels generic): "Mythic clients in this space typically see X" or BW stat "103% LTV mail vs digital."
 
 Hard rule: NEVER name-drop a category-mismatched anchor (no Cone Health in a restaurant email, no Harley in healthcare). Drop the anchor before forcing a wrong one.
